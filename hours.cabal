@@ -1,0 +1,31 @@
+Name: hours
+
+Version:  1.0.0
+Synopsis: Tool to print out hours worked toward monthly goal
+
+Description: Tool to print out hours worked toward monthly goal.
+
+Homepage:           https://github.com/jwiegley/hours
+License:            BSD3
+License-file:       LICENSE
+Author:             John Wiegley
+Maintainer:         John Wiegley <johnw@fpcomplete.com>
+Category:           Development
+Build-type:         Simple
+Cabal-version:      >= 1.8
+
+Extra-Source-Files: README.md
+
+Executable hours
+    Main-is: Main.hs
+    Ghc-options: -threaded
+
+    Build-depends: base                 >= 4 && < 5
+                 , lens                 >= 3.7
+                 , shelly               >= 0.15
+                 , text                 >= 0.11.2
+                 , time                 >= 1.4
+
+Source-repository head
+  type:     git
+  location: https://github.com/jwiegley/hours
