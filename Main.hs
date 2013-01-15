@@ -53,14 +53,16 @@ main = shelly $ silently $ do
       (beg,end) = monthRange (fromIntegral (today^._1))
                              (fromIntegral (today^._2))
       -- jww (2013-01-07): FP Complete reduces the work month by one day
-      workHrs   = fromIntegral $ countWorkDays beg end * 8 - 8
+      workHrs   = fromIntegral $ (countWorkDays beg end - 1) * 8
       workHrsF  = fromRational (toRational workHrs) :: Float
       targetHrs = fromRational (toRational (workHrs * fraction)) :: Float
       realHrs   = (/ 3600.0) $ read . T.unpack . T.init $
                   T.dropWhile (== ' ') (last (T.lines balance))
+      discrep   = realHrs - targetHrs
 
-  liftIO $ printf "%.1fh (%.1f%% ⊣ %.1f%% ⊢ %.1f%%)\n"
-                  realHrs ((realHrs / targetHrs) * 100.0)
+  liftIO $ printf "%.1fh %c%.1fh (%.1f%% ⊣ %.1f%% ⊢ %.1f%%)\n"
+                  realHrs (if discrep < 0 then '↓' else '↑') discrep
+                  ((realHrs / targetHrs) * 100.0)
                   ((realHrs / workHrsF) * 100.0)
                   ((targetHrs / workHrsF) * 100.0)
 
