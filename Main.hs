@@ -43,21 +43,35 @@ main = shelly $ silently $ do
 
     setStdin (T.append data1 data2)
     balance <- run "ledger" ["-f", "-", "-p", "this month", "--base", "bal"]
+    let realHrs = (/ 3600.0)
+                $ (read :: String -> Float) . T.unpack . T.init
+                $ T.dropWhile (== ' ') (last (T.lines balance))
 
-    now <- liftIO getCurrentTime
-    let today      = toGregorian (utctDay now)
+    now <- liftIO $ getZonedTime
+
+    let today      = toGregorian (localDay (zonedTimeToLocalTime now))
         (beg,end)  = monthRange (fromIntegral (today^._1))
                                 (fromIntegral (today^._2))
-        workHrs    = getHours beg end - 8 -- fpco reduces work month by one day
-        targetHrs  = getHours beg now - 16
-        realHrs    = (/ 3600.0) $ (read :: String -> Float) . T.unpack . T.init
-                     $ T.dropWhile (== ' ') (last (T.lines balance))
+        workHrs    = getHours beg end
+        targetHrs  = getHours beg (zonedTimeToUTC now)
         discrep    = realHrs - targetHrs
+        indicator  = if discrep < 0 then '↓' else '↑'
+        paceMark   = ((targetHrs / workHrs) * 100.0)
 
-    liftIO $ printf "%.1fh %c%.1fh ⊣ %.1f%%\n" realHrs
-                    (if discrep < 0 then '↓' else '↑') discrep
-                    ((targetHrs / workHrs) * 100.0)
+    -- liftIO $ putStrLn $ "realHrs:   " ++ show realHrs
+    -- liftIO $ putStrLn $ "today:     " ++ show today
+    -- liftIO $ putStrLn $ "beg:       " ++ show beg
+    -- liftIO $ putStrLn $ "end:       " ++ show end
+    -- liftIO $ putStrLn $ "workHrs:   " ++ show workHrs
+    -- liftIO $ putStrLn $ "targetHrs: " ++ show targetHrs
+    -- liftIO $ putStrLn $ "discrep:   " ++ show discrep
+    -- liftIO $ putStrLn $ "indicator: " ++ show indicator
+    -- liftIO $ putStrLn $ "paceMark:  " ++ show paceMark
+
+    liftIO $ printf "%.1fh %c%.1fh ⊣ %.1f%%\n"
+                    realHrs indicator discrep paceMark
   where
-    getHours beg end = fromIntegral (countWorkDays beg end * 8)
+    getHours beg end = -- FP Complete reduces the work month by one day
+                       fromIntegral ((countWorkDays beg end - 1) * 8)
 
 -- Main.hs (hours) ends here
