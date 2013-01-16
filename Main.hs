@@ -24,46 +24,40 @@ mkUTCTime year month day hour minute second =
       (TimeOfDay (fromIntegral hour) (fromIntegral minute) (realToFrac second)))
 
 monthRange :: Integral a => a -> a -> (UTCTime,UTCTime)
-monthRange year month = do
+monthRange year month =
   (mkUTCTime year month 1 0 0 0,
    mkUTCTime (if month == 12 then year + 1 else year)
              (if month == 12 then 1 else month + 1) 1 0 0 0)
 
 countWorkDays :: UTCTime -> UTCTime -> Int
-countWorkDays beg end = length $ takeWhile (<= end) $ starting beg $
-                        recur daily >==> filter (WeekDays [Monday .. Friday])
-
+countWorkDays beg end =
+    length $ takeWhile (<= end) $ starting beg $
+        recur daily >==> filter (WeekDays [Monday .. Friday])
+
 main :: IO ()
 main = shelly $ silently $ do
-  data1 <- run "org2tc" ["/Users/johnw/doc/Tasks/todo.txt"] -|-
-           run "ledger" ["-f", "-", "print", "complete"]
-  data2 <- run "org2tc" ["/Users/johnw/doc/Tasks/FPComplete.txt"] -|-
-           run "ledger" ["-f", "-", "print"]
+    data1 <- run "org2tc" ["/Users/johnw/doc/Tasks/todo.txt"] -|-
+             run "ledger" ["-f", "-", "print", "complete"]
+    data2 <- run "org2tc" ["/Users/johnw/doc/Tasks/FPComplete.txt"] -|-
+             run "ledger" ["-f", "-", "print"]
 
-  setStdin (T.append data1 data2)
-  balance <- run "ledger" ["-f", "-", "-p", "this month", "--base", "bal"]
+    setStdin (T.append data1 data2)
+    balance <- run "ledger" ["-f", "-", "-p", "this month", "--base", "bal"]
 
-  now <- liftIO getCurrentTime
-  let today     = toGregorian (utctDay now)
-      day       = today^._3
-      days      = gregorianMonthLength (today^._1) day
-      fraction  = (secondsToDiffTime (toInteger (day * 86400)) +
-                   utctDayTime now) /
-                  secondsToDiffTime (toInteger (days * 86400))
-      (beg,end) = monthRange (fromIntegral (today^._1))
-                             (fromIntegral (today^._2))
-      -- jww (2013-01-07): FP Complete reduces the work month by one day
-      workHrs   = fromIntegral $ (countWorkDays beg end - 1) * 8
-      workHrsF  = fromRational (toRational workHrs) :: Float
-      targetHrs = fromRational (toRational (workHrs * fraction)) :: Float
-      realHrs   = (/ 3600.0) $ read . T.unpack . T.init $
-                  T.dropWhile (== ' ') (last (T.lines balance))
-      discrep   = realHrs - targetHrs
+    now <- liftIO getCurrentTime
+    let today      = toGregorian (utctDay now)
+        (beg,end)  = monthRange (fromIntegral (today^._1))
+                                (fromIntegral (today^._2))
+        workHrs    = getHours beg end - 8 -- fpco reduces work month by one day
+        targetHrs  = getHours beg now - 16
+        realHrs    = (/ 3600.0) $ (read :: String -> Float) . T.unpack . T.init
+                     $ T.dropWhile (== ' ') (last (T.lines balance))
+        discrep    = realHrs - targetHrs
 
-  liftIO $ printf "%.1fh %c%.1fh (%.1f%% ⊣ %.1f%% ⊢ %.1f%%)\n"
-                  realHrs (if discrep < 0 then '↓' else '↑') discrep
-                  ((realHrs / targetHrs) * 100.0)
-                  ((realHrs / workHrsF) * 100.0)
-                  ((targetHrs / workHrsF) * 100.0)
+    liftIO $ printf "%.1fh %c%.1fh ⊣ %.1f%%\n" realHrs
+                    (if discrep < 0 then '↓' else '↑') discrep
+                    ((targetHrs / workHrs) * 100.0)
+  where
+    getHours beg end = fromIntegral (countWorkDays beg end * 8)
 
 -- Main.hs (hours) ends here
