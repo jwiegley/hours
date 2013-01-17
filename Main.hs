@@ -43,11 +43,25 @@ main = shelly $ silently $ do
 
     setStdin (T.append data1 data2)
     balance <- run "ledger" ["-f", "-", "-p", "this month", "--base", "bal"]
-    let realHrs = (/ 3600.0)
-                $ (read :: String -> Float) . T.unpack . T.init
-                $ T.dropWhile (== ' ') (last (T.lines balance))
+
+    let debug   = False
+        realHrs =
+            case T.lines balance of
+                [] -> 0.0 :: Float
+                xs -> (/ 3600.0)
+                   $ (read :: String -> Float) . T.unpack . T.init
+                   $ T.dropWhile (== ' ') (last xs)
+        -- jww (2013-01-16): FP Complete reduces the work month by one day
+        adjustedHrs = realHrs + 8.0
 
     now <- liftIO $ getZonedTime
+
+    -- let firstDay  = ZonedTime (LocalTime (fromGregorian 2013 1 1) midday)
+    --                           (TimeZone (-360) True "CDT")
+    --     secondDay  = ZonedTime (LocalTime (fromGregorian 2013 1 2) midday)
+    --                           (TimeZone (-360) True "CDT")
+    --     thirdDay  = ZonedTime (LocalTime (fromGregorian 2013 1 3) midday)
+    --                           (TimeZone (-360) True "CDT")
 
     let today     = toGregorian (localDay (zonedTimeToLocalTime now))
         (beg,end) = monthRange (fromIntegral (today^._1))
@@ -55,25 +69,27 @@ main = shelly $ silently $ do
         workHrs   = getHours beg end
         targetHrs = getHours beg (localTimeToUTC (hoursToTimeZone 0)
                                                  (zonedTimeToLocalTime now))
-        discrep   = realHrs - targetHrs
+        discrep   = adjustedHrs - targetHrs
         indicator = if discrep < 0
                     then "\ESC[31m↓\ESC[0m"
                     else "\ESC[32m↑\ESC[0m"
-        paceMark  = (realHrs / workHrs) * 100.0
+        paceMark  = (adjustedHrs / workHrs) * 100.0
 
-    -- liftIO $ putStrLn $ "realHrs:   " ++ show realHrs
-    -- liftIO $ putStrLn $ "today:     " ++ show today
-    -- liftIO $ putStrLn $ "beg:       " ++ show beg
-    -- liftIO $ putStrLn $ "end:       " ++ show end
-    -- liftIO $ putStrLn $ "workHrs:   " ++ show workHrs
-    -- liftIO $ putStrLn $ "targetHrs: " ++ show targetHrs
-    -- liftIO $ putStrLn $ "discrep:   " ++ show discrep
-    -- liftIO $ putStrLn $ "indicator: " ++ show indicator
-    -- liftIO $ putStrLn $ "paceMark:  " ++ show paceMark
+    when debug $ liftIO $ do
+        putStrLn $ "realHrs:     " ++ show realHrs
+        putStrLn $ "adjustedHrs: " ++ show adjustedHrs
+        putStrLn $ "today:       " ++ show today
+        putStrLn $ "beg:         " ++ show beg
+        putStrLn $ "end:         " ++ show end
+        putStrLn $ "workHrs:     " ++ show workHrs
+        putStrLn $ "targetHrs:   " ++ show targetHrs
+        putStrLn $ "discrep:     " ++ show discrep
+        putStrLn $ "indicator:   " ++ show indicator
+        putStrLn $ "paceMark:    " ++ show paceMark
 
-    liftIO $ printf "%.1f%% %s%.1fh\n" paceMark (T.unpack indicator) discrep
+    liftIO $ printf "%.1f%% %s%.1fh\n"
+                    paceMark (T.unpack indicator) (abs discrep)
   where
-    getHours beg end = -- FP Complete reduces the work month by one day
-                       fromIntegral ((countWorkDays beg end - 1) * 8)
+    getHours beg end = fromIntegral ((countWorkDays beg end - 1) * 8)
 
 -- Main.hs (hours) ends here
