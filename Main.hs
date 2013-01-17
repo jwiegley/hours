@@ -49,14 +49,17 @@ main = shelly $ silently $ do
 
     now <- liftIO $ getZonedTime
 
-    let today      = toGregorian (localDay (zonedTimeToLocalTime now))
-        (beg,end)  = monthRange (fromIntegral (today^._1))
-                                (fromIntegral (today^._2))
-        workHrs    = getHours beg end
-        targetHrs  = getHours beg (zonedTimeToUTC now)
-        discrep    = realHrs - targetHrs
-        indicator  = if discrep < 0 then '↓' else '↑'
-        paceMark   = ((targetHrs / workHrs) * 100.0)
+    let today     = toGregorian (localDay (zonedTimeToLocalTime now))
+        (beg,end) = monthRange (fromIntegral (today^._1))
+                               (fromIntegral (today^._2))
+        workHrs   = getHours beg end
+        targetHrs = getHours beg (localTimeToUTC (hoursToTimeZone 0)
+                                                 (zonedTimeToLocalTime now))
+        discrep   = realHrs - targetHrs
+        indicator = if discrep < 0
+                    then "\ESC[31m↓\ESC[0m"
+                    else "\ESC[32m↑\ESC[0m"
+        paceMark  = (realHrs / workHrs) * 100.0
 
     -- liftIO $ putStrLn $ "realHrs:   " ++ show realHrs
     -- liftIO $ putStrLn $ "today:     " ++ show today
@@ -68,8 +71,7 @@ main = shelly $ silently $ do
     -- liftIO $ putStrLn $ "indicator: " ++ show indicator
     -- liftIO $ putStrLn $ "paceMark:  " ++ show paceMark
 
-    liftIO $ printf "%.1fh %c%.1fh ⊣ %.1f%%\n"
-                    realHrs indicator discrep paceMark
+    liftIO $ printf "%.1f%% %s%.1fh\n" paceMark (T.unpack indicator) discrep
   where
     getHours beg end = -- FP Complete reduces the work month by one day
                        fromIntegral ((countWorkDays beg end - 1) * 8)
