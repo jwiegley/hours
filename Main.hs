@@ -59,15 +59,12 @@ main = shelly $ silently $ do
                                    else T.pack (head args), "bal"]
 
     let debug   = False
-        realHrs' = 0.0 :: Float
         realHrs =
             case T.lines balance of
                 [] -> 0.0 :: Float
                 xs -> (/ 3600.0)
                    $ (read :: String -> Float) . T.unpack . T.init
                    $ T.dropWhile (== ' ') (last xs)
-        -- jww (2013-01-16): FP Complete reduces the work month by one day
-        adjustedHrs = realHrs + 8.0
 
     now <- if null args
           then liftIO $ zonedTimeToLocalTime <$> getZonedTime
@@ -85,20 +82,20 @@ main = shelly $ silently $ do
         currHour  = fromIntegral (todHour (localTimeOfDay now)) / 3.0 :: Float
         (beg,end) = monthRange (fromIntegral (today^._1))
                                (fromIntegral (today^._2))
-        workHrs   = getHours beg end
+        -- jww (2013-01-16): FP Complete reduces the work month by one day
+        workHrs   = getHours beg end - 8
         targetHrs = if null args
                     then (if isWeekendDay (localDay now) then 0 else currHour) +
                          getHours beg (localTimeToUTC (hoursToTimeZone 0) now)
                     else workHrs
-        discrep   = adjustedHrs - targetHrs
+        discrep   = realHrs - targetHrs
         indicator = if discrep < 0
                     then "\ESC[31m↓\ESC[0m"
                     else "\ESC[32m↑\ESC[0m"
-        paceMark  = (adjustedHrs * 100.0) / workHrs
+        paceMark  = (realHrs * 100.0) / workHrs
 
     when debug $ liftIO $ do
         putStrLn $ "realHrs:     " ++ show realHrs
-        putStrLn $ "adjustedHrs: " ++ show adjustedHrs
         putStrLn $ "today:       " ++ show today
         putStrLn $ "currHour:    " ++ show currHour
         putStrLn $ "beg:         " ++ show beg
