@@ -125,7 +125,7 @@ main = shelly $ silently $ do
     liftIO $ printf "%.1f%% %s%.1fh%s\n"
                     paceMark (T.unpack indicator) (abs discrep)
                     (if loggedIn
-                     then printf " \ESC[30m⏱\ESC[0m%.2fh" todayHrs
+                     then printf " \ESC[37m⏱\ESC[0m%.2fh" todayHrs
                      else T.unpack "")
   where
     getHours beg end = fromIntegral ((countWorkDays beg end - 1) * 8)
