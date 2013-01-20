@@ -3,6 +3,7 @@
 module Main where
 
 import           Control.Lens hiding ( value )
+import           Data.List
 import           Data.Maybe
 import           Data.Text.Lazy (Text)
 import qualified Data.Text.Lazy as T
@@ -11,7 +12,7 @@ import           Data.Time.Calendar.WeekDate
 import           Data.Time.Clock
 import           Data.Time.Format
 import           Data.Time.LocalTime
-import           Data.Time.Recurrence
+import           Data.Time.Recurrence as R
 import           Prelude hiding (filter)
 import           Shelly
 import           System.Environment
@@ -36,36 +37,33 @@ monthRange year month =
 
 countWorkDays :: UTCTime -> UTCTime -> Int
 countWorkDays beg end =
-    length $ takeWhile (<= end) $ starting beg $
-        recur daily >==> filter (WeekDays [Monday .. Friday])
+    length . takeWhile (<= end) . starting beg $
+        recur daily >==> R.filter (WeekDays [Monday .. Friday])
 
 isWeekendDay :: Day -> Bool
 isWeekendDay day = let (_,_,dow) = toWeekDate day
                    in dow == 6 || dow == 7
 
+balanceTotal :: [String] -> Text -> Text -> Sh Float
+balanceTotal args journal period = do
+    setStdin journal
+    balance <- run "ledger" ["-f", "-", "--base", "-F", "%(scrub(total))\n"
+                           , "-p", if null args
+                                   then period
+                                   else T.pack (head args), "bal"]
+    return $
+        case T.lines balance of
+            [] -> 0.0 :: Float
+            xs -> (/ 3600.0)
+                  $ (read :: String -> Float) . T.unpack . T.init
+                  $ T.dropWhile (== ' ') (last xs)
+
+debug :: Bool
+debug = False
+
 main :: IO ()
 main = shelly $ silently $ do
-    args  <- liftIO $ getArgs
-
-    data1 <- run "org2tc" ["/Users/johnw/doc/Tasks/todo.txt"] -|-
-             run "ledger" ["-f", "-", "print", "complete"]
-    data2 <- run "org2tc" ["/Users/johnw/doc/Tasks/FPComplete.txt"] -|-
-             run "ledger" ["-f", "-", "print"]
-
-    setStdin (T.append data1 data2)
-    balance <- run "ledger" ["-f", "-", "--base"
-                           , "-p", if null args
-                                   then "this month"
-                                   else T.pack (head args), "bal"]
-
-    let debug   = False
-        realHrs =
-            case T.lines balance of
-                [] -> 0.0 :: Float
-                xs -> (/ 3600.0)
-                   $ (read :: String -> Float) . T.unpack . T.init
-                   $ T.dropWhile (== ' ') (last xs)
-
+    args <- liftIO $ getArgs
     now <- if null args
           then liftIO $ zonedTimeToLocalTime <$> getZonedTime
           else do
@@ -74,9 +72,23 @@ main = shelly $ silently $ do
               return . fromJust $
                   parseTime defaultTimeLocale "%Y/%m/%d" (T.unpack dateString)
 
-    let firstDay  = LocalTime (fromGregorian 2013 1 1) midday
-        secondDay = LocalTime (fromGregorian 2013 1 2) midday
-        thirdDay  = LocalTime (fromGregorian 2013 1 3) midday
+    activeTimelog <- run "org2tc" ["/Users/johnw/doc/Tasks/todo.txt"]
+    let (is, os) = partition (== 'i') $ map T.head (T.lines activeTimelog)
+        loggedIn = length is > length os
+
+    setStdin activeTimelog
+    data1 <- run "ledger" ["-f", "-", "print", "complete"]
+    data2 <- run "org2tc" ["/Users/johnw/doc/Tasks/FPComplete.txt"] -|-
+             run "ledger" ["-f", "-", "print"]
+
+    let combined = T.append data1 data2
+
+    realHrs  <- balanceTotal args combined "this month"
+    todayHrs <- balanceTotal [] combined "today"
+
+    -- let firstDay  = LocalTime (fromGregorian 2013 1 1) midday
+    --     secondDay = LocalTime (fromGregorian 2013 1 2) midday
+    --     thirdDay  = LocalTime (fromGregorian 2013 1 3) midday
 
     let today     = toGregorian (localDay now)
         currHour  = fromIntegral (todHour (localTimeOfDay now)) / 3.0 :: Float
@@ -96,6 +108,7 @@ main = shelly $ silently $ do
 
     when debug $ liftIO $ do
         putStrLn $ "realHrs:     " ++ show realHrs
+        putStrLn $ "todayHrs:    " ++ show todayHrs
         putStrLn $ "today:       " ++ show today
         putStrLn $ "currHour:    " ++ show currHour
         putStrLn $ "beg:         " ++ show beg
@@ -105,9 +118,15 @@ main = shelly $ silently $ do
         putStrLn $ "discrep:     " ++ show discrep
         putStrLn $ "indicator:   " ++ show indicator
         putStrLn $ "paceMark:    " ++ show paceMark
+        putStrLn $ "length is:   " ++ show (length is)
+        putStrLn $ "length os:   " ++ show (length os)
+        putStrLn $ "loggedIn:    " ++ show loggedIn
 
-    liftIO $ printf "%.1f%% %s%.1fh\n"
+    liftIO $ printf "%.1f%% %s%.1fh%s\n"
                     paceMark (T.unpack indicator) (abs discrep)
+                    (if loggedIn
+                     then printf " \ESC[30m⏱\ESC[0m%.2fh" todayHrs
+                     else T.unpack "")
   where
     getHours beg end = fromIntegral ((countWorkDays beg end - 1) * 8)
 

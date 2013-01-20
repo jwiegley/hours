@@ -1,8 +1,7 @@
-Name: hours
+Name:    hours
+Version: 1.2.0
 
-Version:  1.1.0
-Synopsis: Tool to print out hours worked toward monthly goal
-
+Synopsis:    Tool to print out hours worked toward monthly goal
 Description: Tool to print out hours worked toward monthly goal.
 
 Homepage:           https://github.com/jwiegley/hours
