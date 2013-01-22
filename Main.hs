@@ -3,6 +3,7 @@
 module Main where
 
 import           Control.Lens hiding ( value )
+import           Control.Monad
 import           Data.List
 import           Data.Maybe
 import           Data.Text.Lazy (Text)
@@ -35,10 +36,26 @@ monthRange year month =
    mkUTCTime (if month == 12 then year + 1 else year)
              (if month == 12 then 1 else month + 1) 1 0 0 0)
 
-countWorkDays :: UTCTime -> UTCTime -> Int
-countWorkDays beg end =
-    length . takeWhile (<= end) . starting beg $
-        recur daily >==> R.filter (WeekDays [Monday .. Friday])
+federalHolidays :: Int -> Int -> Int
+federalHolidays year month =
+    fromMaybe 0 $ join $ lookup month <$> lookup year
+        [ (2013, [ (1, 2)
+                 , (2, 1)
+                 , (5, 1)
+                 , (7, 1)
+                 , (9, 1)
+                 , (10, 1)
+                 , (11, 2)
+                 , (12, 1)
+                 ])
+        ]
+
+countWorkDays :: Int -> Int -> UTCTime -> UTCTime -> Int
+countWorkDays year month beg end =
+    let holidays = federalHolidays year month
+        days     = length . takeWhile (<= end) . starting beg
+                   $ recur daily >==> R.filter (WeekDays [Monday .. Friday])
+    in days - holidays
 
 isWeekendDay :: Day -> Bool
 isWeekendDay day = let (_,_,dow) = toWeekDate day
@@ -92,13 +109,14 @@ main = shelly $ silently $ do
 
     let today     = toGregorian (localDay now)
         currHour  = fromIntegral (todHour (localTimeOfDay now)) / 3.0 :: Float
-        (beg,end) = monthRange (fromIntegral (today^._1))
-                               (fromIntegral (today^._2))
-        -- jww (2013-01-16): FP Complete reduces the work month by one day
-        workHrs   = getHours beg end - 8
+        (yr,mon)  = (fromIntegral (today^._1), fromIntegral (today^._2))
+        (beg,end) = monthRange yr mon
+        gratis    = 8 -- FP Complete reduces the work month by one day
+        workHrs   = getHours yr mon beg end - gratis
+        midnight  = localTimeToUTC (hoursToTimeZone 0) now
         targetHrs = if null args
                     then (if isWeekendDay (localDay now) then 0 else currHour) +
-                         getHours beg (localTimeToUTC (hoursToTimeZone 0) now)
+                         (getHours yr mon beg midnight - 8) - gratis
                     else workHrs
         discrep   = realHrs - targetHrs
         indicator = if discrep < 0
@@ -128,6 +146,7 @@ main = shelly $ silently $ do
                      then printf " \ESC[37m⏱\ESC[0m%.2fh" todayHrs
                      else T.unpack "")
   where
-    getHours beg end = fromIntegral ((countWorkDays beg end - 1) * 8)
+    getHours yr mon beg end =
+        fromIntegral ((countWorkDays yr mon beg end - 1) * 8)
 
 -- Main.hs (hours) ends here
