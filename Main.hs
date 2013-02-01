@@ -68,7 +68,7 @@ balanceTotal :: Text -> Text -> Sh Float
 balanceTotal journal period = do
     setStdin journal
     balance <- run "ledger" ["-f", "-", "--base", "-F", "%(scrub(total))\n"
-                           , "-p", period, "bal"]
+                           , "-p", period, "--day-break", "bal"]
     return $ case T.lines balance of
         [] -> 0.0 :: Float
         xs -> (/ 3600.0)
@@ -141,13 +141,13 @@ doMain opts = shelly $ silently $ do
         loggedIn = length is > length os
 
     setStdin activeTimelog
-    data1 <- run "ledger" (["-f", "-", "print"]
+    data1 <- run "ledger" (["-f", "-", "--day-break", "print"]
                            <> [ T.pack (category opts)
                               | not (null (category opts)) ])
     data2 <- if null (archive opts)
             then return ""
             else run "org2tc" [T.pack (archive opts)] -|-
-                 run "ledger" ["-f", "-", "print"]
+                 run "ledger" ["-f", "-", "--day-break", "print"]
 
     let combined = T.append data1 data2
     realHrs  <- balanceTotal combined (fromMaybe "this month" per)
