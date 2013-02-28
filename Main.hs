@@ -75,44 +75,36 @@ balanceTotal journal period = do
               $ (read :: String -> Float) . T.unpack . T.init
               $ T.dropWhile (== ' ') (last xs)
 
-data Options = Options { verbose  :: Bool
-                       , file     :: String
-                       , period   :: String
-                       , category :: String
-                       , archive  :: String
-                       , gratis   :: Int
-                       , moment   :: LocalTime }
+data Options = Options
+    { verbose  :: Bool
+    , file     :: String
+    , period   :: String
+    , category :: String
+    , archive  :: String
+    , gratis   :: Int
+    , moment   :: LocalTime
+    }
 
 options :: Parser Options
-options =
-    Options
+options = Options
     <$> switch (long "verbose" <> help "Display statistics")
+    <*> strOption (long "file" <> help "Active timelog file to use")
+    <*> strOption (long "period" <> help "Period to report for" <> value "")
 
-    <*> strOption
-    (long "file" <> help "Active timelog file to use")
+    <*> strOption (long "category"
+                   <> help "Account/category to query from timelog"
+                   <> value "")
 
-    <*> strOption
-    (long "period" <> help "Period to report for"
-     <> value "")
+    <*> strOption (long "archive" <> help "Archival timelog" <> value "")
+    <*> option (long "gratis" <> help "Hours given free each month" <> value 0)
 
-    <*> strOption
-    (long "category" <> help "Account/category to query from timelog"
-     <> value "")
-
-    <*> strOption
-    (long "archive" <> help "Archival timelog" <> value "")
-
-    <*> option
-    (long "gratis" <> help "Hours given free each month" <> value 0)
-
-    <*> option
-    (long "moment" <> help "Set notion of the current moment"
-     <> value (unsafePerformIO $
-               (zonedTimeToLocalTime <$>) getZonedTime)
-     <> reader (Right . flip LocalTime midday . fromJust .
-                Atto.maybeResult .
-                Time.parseWithDefaultOptions Time.defaultDay .
-                B.pack))
+    <*> option (long "moment" <> help "Set notion of the current moment"
+                <> value (unsafePerformIO $
+                          (zonedTimeToLocalTime <$>) getZonedTime)
+                <> reader (Right . flip LocalTime midday . fromJust .
+                           Atto.maybeResult .
+                           Time.parseWithDefaultOptions Time.defaultDay .
+                           B.pack))
 
 main :: IO ()
 main = execParser opts >>= doMain
@@ -128,22 +120,22 @@ doMain opts = shelly $ silently $ do
                then Nothing
                else Just (T.pack (period opts))
 
-    now  <- if isNothing per
-           then return (moment opts)
-           else do
-           dateString <-
-               run "ledger" [ "eval", "--now", fromJust per, "today" ]
-           return . fromJust $
-               parseTime defaultTimeLocale "%Y/%m/%d" (T.unpack dateString)
+    now <- if isNothing per
+          then return (moment opts)
+          else do
+          dateString <-
+              run "ledger" [ "eval", "--now", fromJust per, "today" ]
+          return . fromJust $
+              parseTime defaultTimeLocale "%Y/%m/%d" (T.unpack dateString)
 
     activeTimelog <- run "org2tc" [T.pack (file opts)]
     let (is, os) = partition (== 'i') $ map T.head (T.lines activeTimelog)
         loggedIn = length is > length os
 
     setStdin activeTimelog
-    data1 <- run "ledger" (["-f", "-", "--day-break", "print"]
-                           <> [ T.pack (category opts)
-                              | not (null (category opts)) ])
+    data1 <- run "ledger" (["-f", "-", "--day-break", "print"] <>
+                          [T.pack (category opts)
+                          | not (null (category opts))])
     data2 <- if null (archive opts)
             then return ""
             else run "org2tc" [T.pack (archive opts)] -|-
@@ -171,26 +163,28 @@ doMain opts = shelly $ silently $ do
         paceMark  = (realHrs * 100.0) / workHrs
 
     when (verbose opts) $ liftIO $ do
-        putStrLn $ "realHrs:     " ++ show realHrs
-        putStrLn $ "todayHrs:    " ++ show todayHrs
-        putStrLn $ "today:       " ++ show today
-        putStrLn $ "currHour:    " ++ show currHour
-        putStrLn $ "beg:         " ++ show beg
-        putStrLn $ "end:         " ++ show end
-        putStrLn $ "workHrs:     " ++ show workHrs
-        putStrLn $ "targetHrs:   " ++ show targetHrs
-        putStrLn $ "discrep:     " ++ show discrep
-        putStrLn $ "indicator:   " ++ show indicator
-        putStrLn $ "paceMark:    " ++ show paceMark
-        putStrLn $ "length is:   " ++ show (length is)
-        putStrLn $ "length os:   " ++ show (length os)
-        putStrLn $ "loggedIn:    " ++ show loggedIn
+        putStrLn $ unlines
+            [ "realHrs:     " ++ show realHrs
+            , "todayHrs:    " ++ show todayHrs
+            , "today:       " ++ show today
+            , "currHour:    " ++ show currHour
+            , "beg:         " ++ show beg
+            , "end:         " ++ show end
+            , "workHrs:     " ++ show workHrs
+            , "targetHrs:   " ++ show targetHrs
+            , "discrep:     " ++ show discrep
+            , "indicator:   " ++ show indicator
+            , "paceMark:    " ++ show paceMark
+            , "length is:   " ++ show (length is)
+            , "length os:   " ++ show (length os)
+            , "loggedIn:    " ++ show loggedIn
+            ]
 
     liftIO $ printf "%.1f%% %s%.1fh%s\n"
-                    paceMark (T.unpack indicator) (abs discrep)
-                    (if loggedIn
-                     then printf "\n\ESC[37m⏱\ESC[0m %.2fh" todayHrs
-                     else T.unpack "")
+        paceMark (T.unpack indicator) (abs discrep)
+        (if loggedIn
+         then printf "\n\ESC[37m⏱\ESC[0m %.2fh" todayHrs
+         else T.unpack "")
   where
     getHours yr mon beg end = (countWorkDays yr mon beg end - 1) * 8
 
