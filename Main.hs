@@ -58,7 +58,7 @@ countWorkDays year month beg end =
     let holidays = federalHolidays year month
         days     = length . takeWhile (<= end) . starting beg
                    $ recur daily >==> R.filter (WeekDays [Monday .. Friday])
-    in days - holidays
+    in (days - 1) - holidays
 
 isWeekendDay :: Day -> Bool
 isWeekendDay day = let (_,_,dow) = toWeekDate day
@@ -149,43 +149,64 @@ doMain opts = shelly $ silently $ do
         currHour  = fromIntegral (todHour (localTimeOfDay now)) / 3.0 :: Float
         (yr,mon)  = (fromIntegral (today^._1), fromIntegral (today^._2))
         (beg,end) = monthRange yr mon
-        workHrs   = fromIntegral $ getHours yr mon beg end - gratis opts
-        midnight  = localTimeToUTC (hoursToTimeZone 0) now
+        workDays  = countWorkDays yr mon beg end
+        gworkDays = workDays - gratis opts
+        workHrs   = gworkDays * 8
+        mnight    = localTimeToUTC (hoursToTimeZone 0)
+                                   (LocalTime (localDay now) midnight)
+        targDays  = countWorkDays yr mon beg mnight
+        gtargDays = targDays - gratis opts
+        targHrs   = gtargDays * 8
+        isWeekend = isWeekendDay (localDay now)
         targetHrs = if isNothing per
-                    then (if isWeekendDay (localDay now) then 0 else currHour) +
-                         (fromIntegral $
-                          (getHours yr mon beg midnight - 8) - gratis opts)
-                    else workHrs
+                    then (if isWeekend then 0 else currHour) +
+                         fromIntegral targHrs
+                    else fromIntegral workHrs
         discrep   = realHrs - targetHrs
+        hoursLeft = fromIntegral workHrs - realHrs
         indicator = if discrep < 0
                     then "\ESC[31m↓\ESC[0m"
                     else "\ESC[32m↑\ESC[0m"
-        paceMark  = (realHrs * 100.0) / workHrs
+        paceMark  = (realHrs * 100.0) / fromIntegral workHrs
 
     when (verbose opts) $ liftIO $ do
         putStrLn $ unlines
-            [ "realHrs:     " ++ show realHrs
-            , "todayHrs:    " ++ show todayHrs
+            [ "now:         " ++ show now
             , "today:       " ++ show today
             , "currHour:    " ++ show currHour
+            , "todayHrs:    " ++ show todayHrs
+            , "isWeekend:   " ++ show isWeekend
+            , ""
+            , "period:      " ++ show per
             , "beg:         " ++ show beg
             , "end:         " ++ show end
+            , "days:        " ++ show (floor $ diffUTCTime end beg / 3600 / 24)
+            , "workDays:    " ++ show workDays
+            , "gworkDays:   " ++ show gworkDays
             , "workHrs:     " ++ show workHrs
+            , "midnight:    " ++ show mnight
+            , "targDays:    " ++ show targDays
+            , "gtargDays:   " ++ show gtargDays
             , "targetHrs:   " ++ show targetHrs
+            , ""
+            , "realHrs:     " ++ show realHrs
             , "discrep:     " ++ show discrep
+            , "hoursLeft:   " ++ show hoursLeft
             , "indicator:   " ++ show indicator
             , "paceMark:    " ++ show paceMark
+            , ""
             , "length is:   " ++ show (length is)
             , "length os:   " ++ show (length os)
             , "loggedIn:    " ++ show loggedIn
             ]
 
-    liftIO $ printf "%.1f%% %s%.1fh%s\n"
-        paceMark (T.unpack indicator) (abs discrep)
+    liftIO $ printf "%.1f%% %s%.1fh (%.1fh)%s\n"
+        paceMark (T.unpack indicator) (abs discrep) hoursLeft
         (if loggedIn
          then printf "\n\ESC[37m⏱\ESC[0m %.2fh" todayHrs
          else T.unpack "")
   where
-    getHours yr mon beg end = (countWorkDays yr mon beg end - 1) * 8
+    getDays yr mon beg end  = (countWorkDays yr mon beg end - 1)
+    getHours yr mon beg end = getDays yr mon beg end * 8
 
 -- Main.hs (hours) ends here
