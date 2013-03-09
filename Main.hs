@@ -58,7 +58,7 @@ countWorkDays year month beg end =
     let holidays = federalHolidays year month
         days     = length . takeWhile (<= end) . starting beg
                    $ recur daily >==> R.filter (WeekDays [Monday .. Friday])
-    in (days - 1) - holidays
+    in days - holidays
 
 isWeekendDay :: Day -> Bool
 isWeekendDay day = let (_,_,dow) = toWeekDate day
@@ -152,9 +152,12 @@ doMain opts = shelly $ silently $ do
         workDays  = countWorkDays yr mon beg end
         gworkDays = workDays - gratis opts
         workHrs   = gworkDays * 8
-        mnight    = localTimeToUTC (hoursToTimeZone 0)
-                                   (LocalTime (localDay now) midnight)
-        targDays  = countWorkDays yr mon beg mnight
+        mday      = if 1 == today^._3
+                    then Nothing
+                    else Just $
+                        localTimeToUTC (hoursToTimeZone 0)
+                                       (LocalTime (localDay now) midday)
+        targDays  = maybe 0 (countWorkDays yr mon beg) mday
         gtargDays = targDays - gratis opts
         targHrs   = gtargDays * 8
         isWeekend = isWeekendDay (localDay now)
@@ -184,7 +187,7 @@ doMain opts = shelly $ silently $ do
             , "workDays:    " ++ show workDays
             , "gworkDays:   " ++ show gworkDays
             , "workHrs:     " ++ show workHrs
-            , "midnight:    " ++ show mnight
+            , "mday:        " ++ show mday
             , "targDays:    " ++ show targDays
             , "gtargDays:   " ++ show gtargDays
             , "targetHrs:   " ++ show targetHrs
