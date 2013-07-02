@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Main where
@@ -8,8 +9,13 @@ import qualified Data.Attoparsec.ByteString as Atto
 import qualified Data.ByteString.Char8 as B
 import           Data.List
 import           Data.Maybe
+#if MIN_VERSION_shelly(1, 0, 0)
+import           Data.Text (Text)
+import qualified Data.Text as T
+#else
 import           Data.Text.Lazy (Text)
 import qualified Data.Text.Lazy as T
+#endif
 import           Data.Time.Calendar
 import           Data.Time.Calendar.WeekDate
 import           Data.Time.Clock
@@ -123,25 +129,42 @@ doMain opts = shelly $ silently $ do
     now <- if isNothing per
           then return (moment opts)
           else do
-          dateString <-
-              run "ledger" [ "eval", "--now", fromJust per, "today" ]
-          return . fromJust $
-              parseTime defaultTimeLocale "%Y/%m/%d" (T.unpack dateString)
+              dateString <-
+                  run "ledger" [ "eval", "--now", fromJust per, "today" ]
+              return . fromJust $
+                  parseTime defaultTimeLocale "%Y/%m/%d" (T.unpack dateString)
 
     activeTimelog <- run "org2tc" [T.pack (file opts)]
     let (is, os) = partition (== 'i') $ map T.head (T.lines activeTimelog)
         loggedIn = length is > length os
 
+#if MIN_VERSION_shelly(1, 0, 0)
+    setStdin . T.unlines . reverse . T.lines $ activeTimelog
+#else
     setStdin activeTimelog
+#endif
     data1 <- run "ledger" (["-f", "-", "--day-break", "print"] <>
                           [T.pack (category opts)
                           | not (null (category opts))])
     data2 <- if null (archive opts)
             then return ""
-            else run "org2tc" [T.pack (archive opts)] -|-
+            else do
+#if MIN_VERSION_shelly(1, 0, 0)
+                 org <- run "org2tc" [T.pack (archive opts)]
+                 setStdin . T.unlines . reverse . T.lines $ org
                  run "ledger" ["-f", "-", "--day-break", "print"]
+#else
+                 run "org2tc" [T.pack (archive opts)]
+                     -|- run "ledger" ["-f", "-", "--day-break", "print"]
+#endif
 
+#if MIN_VERSION_shelly(1, 0, 0)
+    let data1' = T.unlines . reverse . T.lines $ data1
+    let data2' = T.unlines . reverse . T.lines $ data2
+    let combined = T.append data1' data2'
+#else
     let combined = T.append data1 data2
+#endif
     realHrs  <- balanceTotal combined (fromMaybe "this month" per)
     todayHrs <- balanceTotal combined "today"
 
@@ -203,7 +226,8 @@ doMain opts = shelly $ silently $ do
     liftIO $ printf "%.1f%% %s%.1fh (%.1fh)%s\n"
         paceMark (T.unpack indicator) (abs discrep) hoursLeft
         (if loggedIn
-         then printf "\n\ESC[37m⏱\ESC[0m %.2fh" todayHrs
+         -- then printf "\n\ESC[37m🕓\ESC[0m %.2fh" todayHrs
+         then printf "\n🕓%.2fh" todayHrs
          else T.unpack "")
   where
     getDays yr mon beg end  = (countWorkDays yr mon beg end - 1)
