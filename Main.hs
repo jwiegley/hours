@@ -138,33 +138,17 @@ doMain opts = shelly $ silently $ do
     let (is, os) = partition (== 'i') $ map T.head (T.lines activeTimelog)
         loggedIn = length is > length os
 
-#if MIN_VERSION_shelly(1, 0, 0)
-    setStdin . T.unlines . reverse . T.lines $ activeTimelog
-#else
     setStdin activeTimelog
-#endif
     data1 <- run "ledger" (["-f", "-", "--day-break", "print"] <>
                           [T.pack (category opts)
                           | not (null (category opts))])
     data2 <- if null (archive opts)
             then return ""
             else do
-#if MIN_VERSION_shelly(1, 0, 0)
-                 org <- run "org2tc" [T.pack (archive opts)]
-                 setStdin . T.unlines . reverse . T.lines $ org
-                 run "ledger" ["-f", "-", "--day-break", "print"]
-#else
                  run "org2tc" [T.pack (archive opts)]
                      -|- run "ledger" ["-f", "-", "--day-break", "print"]
-#endif
 
-#if MIN_VERSION_shelly(1, 0, 0)
-    let data1' = T.unlines . reverse . T.lines $ data1
-    let data2' = T.unlines . reverse . T.lines $ data2
-    let combined = T.append data1' data2'
-#else
-    let combined = T.append data1 data2
-#endif
+    let combined = T.concat [data1, "\n", data2]
     realHrs  <- balanceTotal combined (fromMaybe "this month" per)
     todayHrs <- balanceTotal combined "today"
 
