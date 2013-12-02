@@ -24,6 +24,7 @@ import           Data.Time.LocalTime
 import qualified Data.Time.Parsers as Time
 import           Data.Time.Recurrence as R
 import           Options.Applicative
+import           Options.Applicative.Types (ReadM(..))
 import           Prelude hiding (filter)
 import           Shelly
 import           System.Environment
@@ -107,7 +108,7 @@ options = Options
     <*> option (long "moment" <> help "Set notion of the current moment"
                 <> value (unsafePerformIO $
                           (zonedTimeToLocalTime <$>) getZonedTime)
-                <> reader (Right . flip LocalTime midday . fromJust .
+                <> reader (ReadM . Right . flip LocalTime midday . fromJust .
                            Atto.maybeResult .
                            Time.parseWithDefaultOptions Time.defaultDay .
                            B.pack))
