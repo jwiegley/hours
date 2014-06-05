@@ -27,9 +27,12 @@ import           Text.Printf
 
 default (Integer, Text)
 
+baeTimeZone :: TimeZone
+baeTimeZone = TimeZone (-240) True "EDT"
+
 mkUTCTime :: (Integral a, Real b) => a -> a -> a -> a -> a -> b -> UTCTime
 mkUTCTime year month day hour minute second =
-  localTimeToUTC (hoursToTimeZone 0)
+  localTimeToUTC baeTimeZone
     (LocalTime
       (fromGregorian (fromIntegral year) (fromIntegral month)
                      (fromIntegral day))
@@ -40,6 +43,27 @@ monthRange year month =
   (mkUTCTime year month 1 0 0 0,
    mkUTCTime (if month == 12 then year + 1 else year)
              (if month == 12 then 1 else month + 1) 1 0 0 0)
+
+currentBaeLocalTime :: IO LocalTime
+currentBaeLocalTime = utcToLocalTime baeTimeZone <$> getCurrentTime
+
+mostRecentFridayNoon :: Integral a => a -> a -> a -> UTCTime
+mostRecentFridayNoon year month day =
+    let d = fromGregorian (fromIntegral year) (fromIntegral month)
+                (fromIntegral day)
+        (_,_,dow) = toWeekDate d
+        diff = dow - 5
+        d' = ModifiedJulianDay $
+             toModifiedJulianDay d - toInteger (if diff < 0
+                                                then 7 + diff
+                                                else diff)
+        (year', month', day') = toGregorian d'
+    in mkUTCTime year' (toInteger month') (toInteger day') 12 0 0
+
+baeWeekRange :: Integral a => a -> a -> a -> (UTCTime,UTCTime)
+baeWeekRange year month day =
+    (mostRecentFridayNoon year month day,
+     mostRecentFridayNoon year month (7 + day))
 
 federalHolidays :: Int -> Int -> Int
 federalHolidays year month =
@@ -58,7 +82,7 @@ countWorkDays year month beg end =
     let holidays = federalHolidays year month
         days     = length . takeWhile (< end) . starting beg
                    $ recur daily >==> R.filter (WeekDays [Monday .. Friday])
-    in days - holidays
+    in days -- - holidays
 
 isWeekendDay :: Day -> Bool
 isWeekendDay day = let (_,_,dow) = toWeekDate day
@@ -158,7 +182,7 @@ doMain opts = shelly $ silently $ do
         workDays  = countWorkDays yr mon beg end
         gworkDays = workDays - gratis opts
         workHrs   = gworkDays * 8
-        mnight    = localTimeToUTC (hoursToTimeZone 0)
+        mnight    = localTimeToUTC baeTimeZone
                                    (LocalTime (localDay now) midnight)
         targDays  = countWorkDays yr mon beg mnight
         gtargDays = targDays - gratis opts
