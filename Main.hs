@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Main where
@@ -9,13 +8,8 @@ import qualified Data.Attoparsec.ByteString as Atto
 import qualified Data.ByteString.Char8 as B
 import           Data.List
 import           Data.Maybe
-#if MIN_VERSION_shelly(1, 0, 0)
 import           Data.Text (Text)
 import qualified Data.Text as T
-#else
-import           Data.Text.Lazy (Text)
-import qualified Data.Text.Lazy as T
-#endif
 import           Data.Time.Calendar
 import           Data.Time.Calendar.WeekDate
 import           Data.Time.Clock
@@ -27,7 +21,6 @@ import           Options.Applicative
 import           Options.Applicative.Types (ReadM(..))
 import           Prelude hiding (filter)
 import           Shelly
-import           System.Environment
 import           System.IO.Unsafe
 import           System.Locale
 import           Text.Printf
@@ -108,9 +101,9 @@ options = Options
     <*> option (long "moment" <> help "Set notion of the current moment"
                 <> value (unsafePerformIO $
                           (zonedTimeToLocalTime <$>) getZonedTime)
-                <> reader (ReadM . Right . flip LocalTime midday . fromJust .
+                <> reader (ReadM . Right . fromJust .
                            Atto.maybeResult .
-                           Time.parseWithDefaultOptions Time.defaultDay .
+                           Time.parseWithDefaultOptions Time.defaultLocalTime .
                            B.pack))
 
 main :: IO ()
@@ -135,28 +128,33 @@ doMain opts = shelly $ silently $ do
               return . fromJust $
                   parseTime defaultTimeLocale "%Y/%m/%d" (T.unpack dateString)
 
-    activeTimelog <- run "org2tc" [T.pack (file opts)]
+    let today     = toGregorian (localDay now)
+        yr        = fromIntegral (today^._1)
+        mon       = fromIntegral (today^._2)
+        day       = fromIntegral (today^._3)
+        (beg,end) = baeWeekRange yr mon day
+        fmtTime   = T.pack . formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S"
+        begs      = fmtTime beg
+        ends      = fmtTime end
+
+    activeTimelog <- run "org2tc" [T.pack (file opts), begs, ends]
     let (is, os) = partition (== 'i') $ map T.head (T.lines activeTimelog)
         loggedIn = length is > length os
 
     setStdin activeTimelog
-    data1 <- run "ledger" (["-f", "-", "--day-break", "print"] <>
-                          [T.pack (category opts)
-                          | not (null (category opts))])
+    data1 <- run "ledger" (["-f", "-", "--day-break", "print", "payee"] <>
+                          [T.pack (category opts) | not (null (category opts))])
     data2 <- if null (archive opts)
             then return ""
-            else do
-                 run "org2tc" [T.pack (archive opts)]
+            else run "org2tc" [T.pack (archive opts)]
                      -|- run "ledger" ["-f", "-", "--day-break", "print"]
 
     let combined = T.concat [data1, "\n", data2]
+
     realHrs  <- balanceTotal combined (fromMaybe "this month" per)
     todayHrs <- balanceTotal combined "today"
 
-    let today     = toGregorian (localDay now)
-        currHour  = fromIntegral (todHour (localTimeOfDay now)) / 3.0 :: Float
-        (yr,mon)  = (fromIntegral (today^._1), fromIntegral (today^._2))
-        (beg,end) = monthRange yr mon
+    let currHour  = fromIntegral (todHour (localTimeOfDay now)) / 3.0 :: Float
         workDays  = countWorkDays yr mon beg end
         gworkDays = workDays - gratis opts
         workHrs   = gworkDays * 8
@@ -177,7 +175,7 @@ doMain opts = shelly $ silently $ do
                     else "\ESC[32m↑\ESC[0m"
         paceMark  = (realHrs * 100.0) / fromIntegral workHrs
 
-    when (verbose opts) $ liftIO $ do
+    when (verbose opts) $ liftIO $
         putStrLn $ unlines
             [ "now:         " ++ show now
             , "today:       " ++ show today
