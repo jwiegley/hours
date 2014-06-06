@@ -11,16 +11,34 @@ import time
 def parse_org_time(s):
     return time.strptime(s, "%Y-%m-%d %a %H:%M")
 
+def parse_timestamp(s):
+    return time.strptime(s, "%Y-%m-%d %H:%M:%S")
+
 events       = []
 last_heading = None
+clocks       = []
 data         = sys.argv[1]
-regex        = sys.argv[2] if len(sys.argv) > 2 else None
+range_start  = parse_timestamp(sys.argv[2]) if len(sys.argv) > 2 else None
+range_end    = parse_timestamp(sys.argv[3]) if len(sys.argv) > 3 else None
+regex        = sys.argv[4] if len(sys.argv) > 4 else None
 fd           = open(data, "r")
 headings     = [None] * 9
+
+(billcode, taskcode) = ("<Unknown>", None)
 
 for line in fd:
     match = re.search("^(\*+)\s*(.+)", line)
     if match:
+        if last_heading and clocks:
+            if billcode and taskcode:
+                billcode = "%s:%s" % (billcode, taskcode)
+            for (clock_in, clock_out) in clocks:
+                events.append((clock_in, clock_out, todo_keyword,
+                               ("%s  %s" % (billcode, last_heading))
+                               if billcode else last_heading))
+            clocks = []
+            (billcode, taskcode) = ("<Unknown>", None)
+
         depth = len(match.group(1))
         headings[depth] = match.group(2)
 
@@ -66,8 +84,17 @@ for line in fd:
             else:
                 #clock_out = time.localtime()
                 clock_out = None
+            if (not range_start or clock_in >= range_start) and \
+               (not range_end or clock_in < range_end):
+               clocks.append((clock_in, clock_out))
 
-            events.append((clock_in, clock_out, todo_keyword, last_heading))
+        match = re.search(":BILLCODE:\s+(.+)", line)
+        if match:
+            billcode = match.group(1)
+
+        match = re.search(":TASKCODE:\s+(.+)", line)
+        if match:
+            taskcode = match.group(1)
 
 fd.close()
 
