@@ -30,6 +30,9 @@ default (Integer, Text)
 baeTimeZone :: TimeZone
 baeTimeZone = TimeZone (-240) True "EDT"
 
+myTimeZone :: TimeZone
+myTimeZone = TimeZone (-300) True "CDT"
+
 mkUTCTime :: (Integral a, Real b) => a -> a -> a -> a -> a -> b -> UTCTime
 mkUTCTime year month day hour minute second =
   localTimeToUTC baeTimeZone
@@ -47,23 +50,27 @@ monthRange year month =
 currentBaeLocalTime :: IO LocalTime
 currentBaeLocalTime = utcToLocalTime baeTimeZone <$> getCurrentTime
 
-mostRecentFridayNoon :: Integral a => a -> a -> a -> UTCTime
-mostRecentFridayNoon year month day =
-    let d = fromGregorian (fromIntegral year) (fromIntegral month)
+mostRecentFridayNoon :: Integral a => a -> a -> a -> Int -> Integer -> UTCTime
+mostRecentFridayNoon year month day hour adjust =
+    let d = adjust `addDays`
+            fromGregorian (fromIntegral year) (fromIntegral month)
                 (fromIntegral day)
         (_,_,dow) = toWeekDate d
         diff = dow - 5
-        d' = ModifiedJulianDay $
-             toModifiedJulianDay d - toInteger (if diff < 0
-                                                then 7 + diff
-                                                else diff)
+        d' = ModifiedJulianDay $ toModifiedJulianDay d
+             - toInteger (if diff < 0
+                          then 7 + diff
+                          else diff)
+             - toInteger (if diff == 0 && hour < 12
+                          then 7
+                          else 0)
         (year', month', day') = toGregorian d'
     in mkUTCTime year' (toInteger month') (toInteger day') 12 0 0
 
-baeWeekRange :: Integral a => a -> a -> a -> (UTCTime,UTCTime)
-baeWeekRange year month day =
-    (mostRecentFridayNoon year month day,
-     mostRecentFridayNoon year month (7 + day))
+baeWeekRange :: Integral a => a -> a -> a -> Int -> (UTCTime,UTCTime)
+baeWeekRange year month day hour =
+    let when = mostRecentFridayNoon year month day hour
+    in (when 0, when 7)
 
 federalHolidays :: Int -> Int -> Int
 federalHolidays year month =
@@ -156,8 +163,10 @@ doMain opts = shelly $ silently $ do
         yr        = fromIntegral (today^._1)
         mon       = fromIntegral (today^._2)
         day       = fromIntegral (today^._3)
-        (beg,end) = baeWeekRange yr mon day
+        thishr    = todHour (localTimeOfDay now)
+        (beg,end) = baeWeekRange yr mon day thishr
         fmtTime   = T.pack . formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S"
+                           . utcToLocalTime myTimeZone
         begs      = fmtTime beg
         ends      = fmtTime end
 
@@ -170,7 +179,7 @@ doMain opts = shelly $ silently $ do
                           [T.pack (category opts) | not (null (category opts))])
     data2 <- if null (archive opts)
             then return ""
-            else run "org2tc" [T.pack (archive opts)]
+            else run "org2tc" [T.pack (archive opts), begs, ends]
                      -|- run "ledger" ["-f", "-", "--day-break", "print"]
 
     let combined = T.concat [data1, "\n", data2]
@@ -178,7 +187,7 @@ doMain opts = shelly $ silently $ do
     realHrs  <- balanceTotal combined (fromMaybe "this month" per)
     todayHrs <- balanceTotal combined "today"
 
-    let currHour  = fromIntegral (todHour (localTimeOfDay now)) / 3.0 :: Float
+    let currHour  = fromIntegral thishr / 3.0 :: Float
         workDays  = countWorkDays yr mon beg end
         gworkDays = workDays - gratis opts
         workHrs   = gworkDays * 8
@@ -208,13 +217,13 @@ doMain opts = shelly $ silently $ do
             , "isWeekend:   " ++ show isWeekend
             , ""
             , "period:      " ++ show per
-            , "beg:         " ++ show beg
-            , "end:         " ++ show end
+            , "beg:         " ++ T.unpack begs
+            , "end:         " ++ T.unpack ends
             , "days:        " ++ show (floor $ diffUTCTime end beg / 3600 / 24)
             , "workDays:    " ++ show workDays
             , "gworkDays:   " ++ show gworkDays
             , "workHrs:     " ++ show workHrs
-            , "midnight:    " ++ show mnight
+            , "midnight:    " ++ T.unpack (fmtTime mnight)
             , "targDays:    " ++ show targDays
             , "gtargDays:   " ++ show gtargDays
             , "targetHrs:   " ++ show targetHrs
@@ -230,8 +239,8 @@ doMain opts = shelly $ silently $ do
             , "loggedIn:    " ++ show loggedIn
             ]
 
-    liftIO $ printf "%.1f%% %s%.1fh (%.1fh)%s\n"
-        paceMark (T.unpack indicator) (abs discrep) hoursLeft
+    liftIO $ printf "%s%.1fh (%.1fh) %.1f%%%s\n"
+        (T.unpack indicator) (abs discrep) hoursLeft paceMark
         (if loggedIn
          -- then printf "\n\ESC[37m🕓\ESC[0m %.2fh" todayHrs
          then printf "\n🕓%.2fh" todayHrs

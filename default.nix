@@ -13,7 +13,7 @@
 
 cabal.mkDerivation (self: {
   pname = "hours";
-  version = "1.4.1";
+  version = "2.0";
   src = ./.;
   isLibrary = false;
   isExecutable = true;
