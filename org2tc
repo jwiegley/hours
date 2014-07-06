@@ -29,16 +29,6 @@ headings     = [None] * 9
 for line in fd:
     match = re.search("^(\*+)\s*(.+)", line)
     if match:
-        if last_heading and clocks:
-            if billcode and taskcode:
-                billcode = "%s:%s" % (billcode, taskcode)
-            for (clock_in, clock_out) in clocks:
-                events.append((clock_in, clock_out, todo_keyword,
-                               ("%s  %s" % (billcode, last_heading))
-                               if billcode else last_heading))
-            clocks = []
-            (billcode, taskcode) = ("<Unknown>", None)
-
         depth = len(match.group(1))
         headings[depth] = match.group(2)
 
@@ -87,10 +77,24 @@ for line in fd:
             if (not range_start or clock_in >= range_start) and \
                (not range_end or clock_in < range_end):
                clocks.append((clock_in, clock_out))
+            elif clock_in < range_start and clock_out > range_start:
+               clocks.append((range_start, clock_out))
+            elif clock_in < range_end and clock_out > range_end:
+               clocks.append((clock_in, range_end))
+
+            if clocks:
+                if billcode and ":" not in billcode and taskcode:
+                    billcode = "%s:%s" % (billcode, taskcode)
+                for (clock_in, clock_out) in clocks:
+                    events.append((clock_in, clock_out, todo_keyword,
+                                   ("%s  %s" % (billcode, last_heading))
+                                   if billcode else last_heading))
+                clocks = []
 
         match = re.search(":BILLCODE:\s+(.+)", line)
         if match:
             billcode = match.group(1)
+            taskcode = None
 
         match = re.search(":TASKCODE:\s+(.+)", line)
         if match:

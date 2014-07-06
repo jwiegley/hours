@@ -169,6 +169,8 @@ doMain opts = shelly $ silently $ do
                            . utcToLocalTime myTimeZone
         begs      = fmtTime beg
         ends      = fmtTime end
+        fmtDate   = T.pack . formatTime defaultTimeLocale "%Y-%m-%d"
+                           . utcToLocalTime myTimeZone
 
     activeTimelog <- run "org2tc" [T.pack (file opts), begs, ends]
     let (is, os) = partition (== 'i') $ map T.head (T.lines activeTimelog)
@@ -184,7 +186,7 @@ doMain opts = shelly $ silently $ do
 
     let combined = T.concat [data1, "\n", data2]
 
-    realHrs  <- balanceTotal combined (fromMaybe "this month" per)
+    realHrs  <- balanceTotal combined (fromMaybe ("since " <> fmtDate beg) per)
     todayHrs <- balanceTotal combined "today"
 
     let currHour  = fromIntegral thishr / 3.0 :: Float
