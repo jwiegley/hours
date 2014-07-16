@@ -163,8 +163,14 @@ doMain opts = shelly $ silently $ do
         yr        = fromIntegral (today^._1)
         mon       = fromIntegral (today^._2)
         day       = fromIntegral (today^._3)
+        mnight    = localTimeToUTC baeTimeZone
+                        (LocalTime (localDay now) midnight)
         thishr    = todHour (localTimeOfDay now)
         (beg,end) = baeWeekRange yr mon day thishr
+        tdyBeg    = if today == toGregorian (utctDay beg)
+                    then beg
+                    else mnight
+        thismom   = diffUTCTime (localTimeToUTC myTimeZone now) tdyBeg
         fmtTime   = T.pack . formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S"
                            . utcToLocalTime myTimeZone
         begs      = fmtTime beg
@@ -189,12 +195,10 @@ doMain opts = shelly $ silently $ do
     realHrs  <- balanceTotal combined (fromMaybe ("since " <> fmtDate beg) per)
     todayHrs <- balanceTotal combined "today"
 
-    let currHour  = fromIntegral thishr / 3.0 :: Float
+    let currHour  = fromIntegral (ceiling thismom) / 3600.0 / 3.0
         workDays  = countWorkDays yr mon beg end
         gworkDays = workDays - gratis opts
         workHrs   = gworkDays * 8
-        mnight    = localTimeToUTC baeTimeZone
-                                   (LocalTime (localDay now) midnight)
         targDays  = countWorkDays yr mon beg mnight
         gtargDays = targDays - gratis opts
         targHrs   = gtargDays * 8
@@ -212,27 +216,30 @@ doMain opts = shelly $ silently $ do
 
     when (verbose opts) $ liftIO $
         putStrLn $ unlines
-            [ "now:         " ++ show now
-            , "today:       " ++ show today
-            , "currHour:    " ++ show currHour
-            , "todayHrs:    " ++ show todayHrs
-            , "isWeekend:   " ++ show isWeekend
-            , ""
-            , "period:      " ++ show per
+            [ "today:       " ++ show today
+            , "now:         " ++ show now
             , "beg:         " ++ T.unpack begs
             , "end:         " ++ T.unpack ends
+            , "midnight:    " ++ T.unpack (fmtTime mnight)
+            , "tdyBeg:      " ++ T.unpack (fmtTime tdyBeg)
+            , ""
+            , "currHour:    " ++ show currHour
+            , "targetHrs:   " ++ show targetHrs
+            , "todayHrs:    " ++ show todayHrs
+            , "realHrs:     " ++ show realHrs
+            , "hoursLeft:   " ++ show hoursLeft
+            , "discrep:     " ++ show discrep
+            , ""
+            , "period:      " ++ show per
             , "days:        " ++ show (floor $ diffUTCTime end beg / 3600 / 24)
+            , "isWeekend:   " ++ show isWeekend
             , "workDays:    " ++ show workDays
             , "gworkDays:   " ++ show gworkDays
             , "workHrs:     " ++ show workHrs
-            , "midnight:    " ++ T.unpack (fmtTime mnight)
             , "targDays:    " ++ show targDays
             , "gtargDays:   " ++ show gtargDays
-            , "targetHrs:   " ++ show targetHrs
+            , "targHrs:     " ++ show targHrs
             , ""
-            , "realHrs:     " ++ show realHrs
-            , "discrep:     " ++ show discrep
-            , "hoursLeft:   " ++ show hoursLeft
             , "indicator:   " ++ show indicator
             , "paceMark:    " ++ show paceMark
             , ""
