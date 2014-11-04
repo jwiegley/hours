@@ -30,6 +30,7 @@ Executable hours
                  , time                 >= 1.4
                  , time-recurrence      >= 0.9.1
                  , timeparsers          >= 0.3.2
+                 , transformers
 
 Source-repository head
   type:     git

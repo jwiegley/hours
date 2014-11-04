@@ -9,12 +9,13 @@
 , time
 , timeRecurrence
 , timeparsers
+, transformers
 }:
 
 cabal.mkDerivation (self: {
   pname = "hours";
   version = "2.0";
-  src = ./.;
+  src = builtins.filterSource (path: type: type != "unknown") ./.;
   isLibrary = false;
   isExecutable = true;
   buildDepends = [
@@ -28,6 +29,7 @@ cabal.mkDerivation (self: {
     time
     timeRecurrence
     timeparsers
+    transformers
   ];
   meta = {
     homepage = "https://github.com/jwiegley/hours";
