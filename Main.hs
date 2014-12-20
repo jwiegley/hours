@@ -42,15 +42,6 @@ mkUTCTime year month day hour minute second =
                      (fromIntegral day))
       (TimeOfDay (fromIntegral hour) (fromIntegral minute) (realToFrac second)))
 
-monthRange :: Integral a => a -> a -> (UTCTime,UTCTime)
-monthRange year month =
-  (mkUTCTime year month 1 0 0 0,
-   mkUTCTime (if month == 12 then year + 1 else year)
-             (if month == 12 then 1 else month + 1) 1 0 0 0)
-
-currentBaeLocalTime :: IO LocalTime
-currentBaeLocalTime = utcToLocalTime baeTimeZone <$> getCurrentTime
-
 mostRecentFridayNoon :: Integral a => a -> a -> a -> Int -> Integer -> UTCTime
 mostRecentFridayNoon year month day hour adjust =
     let d = adjust `addDays`
@@ -73,24 +64,31 @@ baeWeekRange year month day hour =
     let when = mostRecentFridayNoon year month day hour
     in (when 0, when 7)
 
-federalHolidays :: Int -> Int -> Int
-federalHolidays year month =
-    fromMaybe 0 $ join $ lookup month <$> lookup year
-        [ (2013, [(1,2),(2,1),(5,1),(7,1),(9,1),(10,1),(11,2),(12,1)])
-        , (2014, [(1,2),(2,1),(5,1),(7,1),(9,1),(10,1),(11,2),(12,1)])
-        , (2015, [(1,2),(2,1),(5,1),(7,1),(9,1),(10,1),(11,2),(12,1)])
-        , (2016, [(1,2),(2,1),(5,1),(7,1),(9,1),(10,1),(11,2),(12,1)])
-        , (2017, [(1,2),(2,1),(5,1),(7,1),(9,1),(10,1),(11,2),(12,1)])
-        , (2018, [(1,2),(2,1),(5,1),(7,1),(9,1),(10,1),(11,2),(12,1)])
-        , (2019, [(1,2),(2,1),(5,1),(7,1),(9,1),(10,1),(11,2),(12,1)])
-        , (2020, [(1,2),(2,1),(5,1),(7,1),(9,1),(10,1),(11,2),(12,1)]) ]
+holidays :: Int -> Int -> [Int]
+holidays year month =
+    fromMaybe [] $ join $ lookup month <$> lookup year
+        [ (2014, [(12,[25,26])])
+        , (2015, []) ]
 
-countWorkDays :: Int -> Int -> UTCTime -> UTCTime -> Int
-countWorkDays year month beg end =
-    let holidays = federalHolidays year month
-        days     = length . takeWhile (< end) . starting beg
+countWorkHours :: Int -> Int -> UTCTime -> UTCTime -> Int
+countWorkHours year month beg end =
+    let days     = length . takeWhile (< end) . starting beg
                    $ recur daily >==> R.filter (WeekDays [Monday .. Friday])
-    in days -- - holidays
+        getDay x = (\(_, _, d) -> d) $ toGregorian x
+        begDay   = getDay (utctDay beg)
+        endDay   = getDay (utctDay end)
+        -- This calculation corresponds with the way that BAE does holiday
+        -- hours: 9 hours for a regular week day, 4 hours for each half of a
+        -- Friday.
+        holHours = map (\n ->
+                         if n >= begDay
+                         then if n < endDay
+                              then 9
+                              else if n == endDay
+                                   then 4
+                                   else 0
+                         else 0) (holidays year month)
+    in days * 8 - sum holHours
 
 isWeekendDay :: Day -> Bool
 isWeekendDay day = let (_,_,dow) = toWeekDate day
@@ -113,7 +111,6 @@ data Options = Options
     , period   :: String
     , category :: String
     , archive  :: String
-    , gratis   :: Int
     , moment   :: LocalTime
     }
 
@@ -128,7 +125,6 @@ options = Options
                    <> value "")
 
     <*> strOption (long "archive" <> help "Archival timelog" <> value "")
-    <*> option auto (long "gratis" <> help "Hours given free each month" <> value 0)
 
     <*> option
           (ReadM $ asks $ fromJust . Atto.maybeResult .
@@ -196,12 +192,8 @@ doMain opts = shelly $ silently $ do
     todayHrs <- balanceTotal combined "today"
 
     let currHour  = fromIntegral (ceiling thismom) / 3600.0 / 3.0
-        workDays  = countWorkDays yr mon beg end
-        gworkDays = workDays - gratis opts
-        workHrs   = gworkDays * 8
-        targDays  = countWorkDays yr mon beg mnight
-        gtargDays = targDays - gratis opts
-        targHrs   = gtargDays * 8
+        workHrs   = countWorkHours yr mon beg end
+        targHrs   = countWorkHours yr mon beg mnight
         isWeekend = isWeekendDay (localDay now)
         targetHrs = if isNothing per
                     then (if isWeekend then 0 else currHour) +
@@ -231,13 +223,9 @@ doMain opts = shelly $ silently $ do
             , "discrep:     " ++ show discrep
             , ""
             , "period:      " ++ show per
-            , "days:        " ++ show (floor $ diffUTCTime end beg / 3600 / 24)
+            , "days:        " ++ show (floor (diffUTCTime end beg / 3600 / 24))
             , "isWeekend:   " ++ show isWeekend
-            , "workDays:    " ++ show workDays
-            , "gworkDays:   " ++ show gworkDays
             , "workHrs:     " ++ show workHrs
-            , "targDays:    " ++ show targDays
-            , "gtargDays:   " ++ show gtargDays
             , "targHrs:     " ++ show targHrs
             , ""
             , "indicator:   " ++ show indicator
@@ -254,8 +242,5 @@ doMain opts = shelly $ silently $ do
          -- then printf "\n\ESC[37m🕓\ESC[0m %.2fh" todayHrs
          then printf "\n🕓%.2fh" todayHrs
          else T.unpack "")
-  where
-    getDays yr mon beg end  = (countWorkDays yr mon beg end - 1)
-    getHours yr mon beg end = getDays yr mon beg end * 8
 
 -- Main.hs (hours) ends here
