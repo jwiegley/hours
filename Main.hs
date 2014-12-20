@@ -68,7 +68,7 @@ holidays :: Int -> Int -> [Int]
 holidays year month =
     fromMaybe [] $ join $ lookup month <$> lookup year
         [ (2014, [(12,[25,26])])
-        , (2015, []) ]
+        , (2015, [(1,[1])]) ]
 
 countWorkHours :: Int -> Int -> UTCTime -> UTCTime -> Int
 countWorkHours year month beg end =
@@ -91,8 +91,7 @@ countWorkHours year month beg end =
     in days * 8 - sum holHours
 
 isWeekendDay :: Day -> Bool
-isWeekendDay day = let (_,_,dow) = toWeekDate day
-                   in dow == 6 || dow == 7
+isWeekendDay day = let (_,_,dow) = toWeekDate day in dow == 6 || dow == 7
 
 balanceTotal :: Text -> Text -> Sh Float
 balanceTotal journal period = do
