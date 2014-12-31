@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ViewPatterns #-}
 
 module Main where
 
@@ -26,69 +27,67 @@ import           System.IO.Unsafe
 import           System.Locale
 import           Text.Printf
 
-default (Integer, Text)
+myTimeZone :: TimeZone
+myTimeZone = TimeZone (-300) True "CDT"
 
 baeTimeZone :: TimeZone
 baeTimeZone = TimeZone (-240) True "EDT"
 
-myTimeZone :: TimeZone
-myTimeZone = TimeZone (-300) True "CDT"
-
-mkUTCTime :: (Integral a, Real b) => a -> a -> a -> a -> a -> b -> UTCTime
+mkUTCTime :: Integer -> Int -> Int -> Int -> Int -> Int -> UTCTime
 mkUTCTime year month day hour minute second =
-  localTimeToUTC baeTimeZone
-    (LocalTime
-      (fromGregorian (fromIntegral year) (fromIntegral month)
-                     (fromIntegral day))
-      (TimeOfDay (fromIntegral hour) (fromIntegral minute) (realToFrac second)))
+    localTimeToUTC baeTimeZone $ LocalTime
+        (fromGregorian (fromIntegral year) (fromIntegral month)
+                       (fromIntegral day))
+        (TimeOfDay (fromIntegral hour) (fromIntegral minute)
+                   (realToFrac second))
 
-mostRecentFridayNoon :: Integral a => a -> a -> a -> Int -> Integer -> UTCTime
+mostRecentFridayNoon :: Integer -> Int -> Int -> Int -> Integer -> UTCTime
 mostRecentFridayNoon year month day hour adjust =
     let d = adjust `addDays`
             fromGregorian (fromIntegral year) (fromIntegral month)
-                (fromIntegral day)
+                          (fromIntegral day)
         (_,_,dow) = toWeekDate d
-        diff = dow - 5
+        diff = toInteger (dow - 5)
         d' = ModifiedJulianDay $ toModifiedJulianDay d
-             - toInteger (if diff < 0
-                          then 7 + diff
-                          else diff)
-             - toInteger (if diff == 0 && hour < 12
-                          then 7
-                          else 0)
+             - (if diff < 0
+                then 7 + diff
+                else diff)
+             - (if diff == 0 && hour < 12
+                then 7
+                else 0)
         (year', month', day') = toGregorian d'
-    in mkUTCTime year' (toInteger month') (toInteger day') 12 0 0
+    in mkUTCTime year' month' day' 12 0 0
 
-baeWeekRange :: Integral a => a -> a -> a -> Int -> (UTCTime,UTCTime)
+baeWeekRange :: Integer -> Int -> Int -> Int -> (UTCTime,UTCTime)
 baeWeekRange year month day hour =
-    let when = mostRecentFridayNoon year month day hour
-    in (when 0, when 7)
+    let f = mostRecentFridayNoon year month day hour in (f 0, f 7)
 
-holidays :: Int -> Int -> [Int]
+holidays :: Integer -> Int -> [Int]
 holidays year month =
     fromMaybe [] $ join $ lookup month <$> lookup year
-        [ (2014, [(12,[25,26])])
-        , (2015, [(1,[1])]) ]
+        [ (2014, [ (12, [25, 26]) ])
+        , (2015, [ ( 1, [1])
+                 ])
+        ]
 
-countWorkHours :: Int -> Int -> UTCTime -> UTCTime -> Int
-countWorkHours year month beg end =
-    let days     = length . takeWhile (< end) . starting beg
-                   $ recur daily >==> R.filter (WeekDays [Monday .. Friday])
-        getDay x = (\(_, _, d) -> d) $ toGregorian x
-        begDay   = getDay (utctDay beg)
-        endDay   = getDay (utctDay end)
-        -- This calculation corresponds with the way that BAE does holiday
-        -- hours: 9 hours for a regular week day, 4 hours for each half of a
-        -- Friday.
-        holHours = map (\n ->
-                         if n >= begDay
-                         then if n < endDay
-                              then 9
-                              else if n == endDay
-                                   then 4
-                                   else 0
-                         else 0) (holidays year month)
-    in days * 8 - sum holHours
+baeWorkHoursForDay :: Integer -> Int -> Int -> Int
+baeWorkHoursForDay year month day =
+    case fromGregorianValid year month day of
+        Nothing -> error $ "workHoursForDay: invalid date: "
+                       ++ show (year, month, day)
+        Just (toWeekDate -> (_,_,dow))
+            | day `elem` holidays year month -> 0
+            | dow == 5  -> 4     -- Friday
+            | otherwise -> 9
+
+countWorkHours :: UTCTime -> UTCTime -> Int
+countWorkHours beg end =
+    sum $ map (uncurry3 baeWorkHoursForDay . toGregorian . utctDay)
+        $ takeWhile (< end)
+        $ starting beg
+        $ recur daily >==> R.filter (WeekDays [Monday .. Friday])
+  where
+    uncurry3 f (a,b,c) = f a b c
 
 isWeekendDay :: Day -> Bool
 isWeekendDay day = let (_,_,dow) = toWeekDate day in dow == 6 || dow == 7
@@ -101,8 +100,8 @@ balanceTotal journal period = do
     return $ case T.lines balance of
         [] -> 0.0 :: Float
         xs -> (/ 3600.0)
-              $ (read :: String -> Float) . T.unpack . T.init
-              $ T.dropWhile (== ' ') (last xs)
+           $ (read :: String -> Float) . T.unpack . T.init
+           $ T.dropWhile (== ' ') (last xs)
 
 data Options = Options
     { verbose  :: Bool
@@ -191,8 +190,8 @@ doMain opts = shelly $ silently $ do
     todayHrs <- balanceTotal combined "today"
 
     let currHour  = fromIntegral (ceiling thismom) / 3600.0 / 3.0
-        workHrs   = countWorkHours yr mon beg end
-        targHrs   = countWorkHours yr mon beg mnight
+        workHrs   = countWorkHours beg end
+        targHrs   = countWorkHours beg mnight
         isWeekend = isWeekendDay (localDay now)
         targetHrs = if isNothing per
                     then (if isWeekend then 0 else currHour) +
