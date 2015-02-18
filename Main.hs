@@ -177,8 +177,7 @@ doMain opts = shelly $ silently $ do
         loggedIn = length is > length os
 
     setStdin activeTimelog
-    data1 <- run "ledger" (["-f", "-", "--day-break", "print", "payee"] <>
-                          [T.pack (category opts) | not (null (category opts))])
+    data1 <- run "ledger" (["-f", "-", "--day-break", "print"])
     data2 <- if null (archive opts)
             then return ""
             else run "org2tc" [T.pack (archive opts), begs, ends]
