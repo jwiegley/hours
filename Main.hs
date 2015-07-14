@@ -233,11 +233,17 @@ doMain opts = shelly $ silently $ do
             , "loggedIn:    " ++ show loggedIn
             ]
 
-    liftIO $ printf "%s%.1fh (%.1fh) %.1f%%%s\n"
-        (T.unpack indicator) (abs discrep) hoursLeft paceMark
+    -- liftIO $ printf "%s%.1fh (%.1fh) %.1f%%%s\n"
+    --     (T.unpack indicator) (abs discrep) hoursLeft paceMark
+    --     (if loggedIn
+    --      -- then printf "\n\ESC[37m🕓\ESC[0m %.2fh" todayHrs
+    --      then printf "\n🕓%.2fh" todayHrs
+    --      else T.unpack "")
+
+    liftIO $ printf "%s%.1fh (%.1fh)%s\n"
+        (T.unpack indicator) (abs discrep) hoursLeft
         (if loggedIn
-         -- then printf "\n\ESC[37m🕓\ESC[0m %.2fh" todayHrs
-         then printf "\n🕓%.2fh" todayHrs
+         then printf " 🕓%.2fh" todayHrs
          else T.unpack "")
 
 -- Main.hs (hours) ends here
