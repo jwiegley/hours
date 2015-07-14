@@ -1,40 +1,18 @@
-{ cabal
-, attoparsec
-, bytestring ? null
-, lens
-, oldLocale ? null
-, optparseApplicative
-, shelly
-, text
-, time
-, timeRecurrence
-, timeparsers
-, transformers
+{ mkDerivation, attoparsec, base, bytestring, lens, old-locale
+, optparse-applicative, shelly, stdenv, text, time, time-recurrence
+, timeparsers, transformers
 }:
-
-cabal.mkDerivation (self: {
+mkDerivation {
   pname = "hours";
   version = "2.0";
-  src = builtins.filterSource (path: type: type != "unknown") ./.;
+  src = ./.;
   isLibrary = false;
   isExecutable = true;
   buildDepends = [
-    attoparsec
-    bytestring
-    lens
-    oldLocale
-    optparseApplicative
-    shelly
-    text
-    time
-    timeRecurrence
-    timeparsers
-    transformers
+    attoparsec base bytestring lens old-locale optparse-applicative
+    shelly text time time-recurrence timeparsers transformers
   ];
-  meta = {
-    homepage = "https://github.com/jwiegley/hours";
-    description = "Compute remaining work hours for a given month";
-    license = self.stdenv.lib.licenses.bsd3;
-    platforms = self.ghc.meta.platforms;
-  };
-})
+  homepage = "https://github.com/jwiegley/hours";
+  description = "Tool to print out hours worked toward monthly goal";
+  license = stdenv.lib.licenses.bsd3;
+}
