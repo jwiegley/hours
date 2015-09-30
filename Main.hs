@@ -12,6 +12,7 @@ import           Data.List
 import           Data.Maybe
 import           Data.Text (Text)
 import qualified Data.Text as T
+import           Data.Time (defaultTimeLocale)
 import           Data.Time.Calendar
 import           Data.Time.Calendar.WeekDate
 import           Data.Time.Clock
@@ -24,11 +25,10 @@ import           Options.Applicative.Types (ReadM(..))
 import           Prelude hiding (filter)
 import           Shelly
 import           System.IO.Unsafe
-import           System.Locale
 import           Text.Printf
 
 myTimeZone :: TimeZone
-myTimeZone = TimeZone (-300) True "CDT"
+myTimeZone = TimeZone (-420) True "PDT"
 
 baeTimeZone :: TimeZone
 baeTimeZone = TimeZone (-240) True "EDT"
