@@ -35,7 +35,7 @@ baeTimeZone = TimeZone (-240) True "EDT"
 
 mkUTCTime :: Integer -> Int -> Int -> Int -> Int -> Int -> UTCTime
 mkUTCTime year month day hour minute second =
-    localTimeToUTC baeTimeZone $ LocalTime
+    localTimeToUTC myTimeZone $ LocalTime
         (fromGregorian (fromIntegral year) (fromIntegral month)
                        (fromIntegral day))
         (TimeOfDay (fromIntegral hour) (fromIntegral minute)
@@ -56,7 +56,8 @@ mostRecentFridayNoon year month day hour adjust =
                 then 7
                 else 0)
         (year', month', day') = toGregorian d'
-    in mkUTCTime year' month' day' 12 0 0
+    -- in mkUTCTime year' month' day' 13 30 0
+    in mkUTCTime year' month' day' 8 30 0
 
 baeWeekRange :: Integer -> Int -> Int -> Int -> (UTCTime,UTCTime)
 baeWeekRange year month day hour =
