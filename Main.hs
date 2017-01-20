@@ -173,7 +173,7 @@ doMain opts = shelly $ silently $ do
         fmtDate   = T.pack . formatTime defaultTimeLocale "%Y-%m-%d"
                            . utcToLocalTime myTimeZone
 
-    activeTimelog <- run "org2tc" [T.pack (file opts), begs, ends]
+    activeTimelog <- run "org2tc" [T.pack (file opts), "-s", begs, "-e", ends]
     let (is, os) = partition (== 'i') $ map T.head (T.lines activeTimelog)
         loggedIn = length is > length os
 
@@ -181,7 +181,7 @@ doMain opts = shelly $ silently $ do
     data1 <- run "ledger" (["-f", "-", "--day-break", "print"])
     data2 <- if null (archive opts)
             then return ""
-            else run "org2tc" [T.pack (archive opts), begs, ends]
+            else run "org2tc" [T.pack (archive opts), "-s", begs, "-e", ends]
                      -|- run "ledger" ["-f", "-", "--day-break", "print"]
 
     let combined = T.concat [data1, "\n", data2]
