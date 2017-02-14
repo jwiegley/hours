@@ -10,6 +10,7 @@ import qualified Data.Attoparsec.ByteString as Atto
 import qualified Data.ByteString.Char8 as B
 import           Data.List
 import           Data.Maybe
+import           Data.Monoid ((<>))
 import           Data.Text (Text)
 import qualified Data.Text as T
 import           Data.Time (defaultTimeLocale)
