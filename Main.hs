@@ -57,8 +57,7 @@ mostRecentFridayNoon year month day hour adjust =
                 then 7
                 else 0)
         (year', month', day') = toGregorian d'
-    -- in mkUTCTime year' month' day' 13 30 0
-    in mkUTCTime year' month' day' 8 30 0
+    in mkUTCTime year' month' day' 6 30 0
 
 baeWeekRange :: Integer -> Int -> Int -> Int -> (UTCTime,UTCTime)
 baeWeekRange year month day hour =
