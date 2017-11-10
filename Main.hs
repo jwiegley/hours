@@ -143,16 +143,16 @@ main = execParser opts >>= doMain
 doMain :: Options -> IO ()
 doMain opts = shelly $ silently $ do
     let per = if null (period opts)
-               then Nothing
-               else Just (T.pack (period opts))
+              then Nothing
+              else Just (T.pack (period opts))
 
-    now <- if isNothing per
-          then return (moment opts)
-          else do
-              dateString <-
-                  run "ledger" [ "eval", "--now", fromJust per, "today" ]
-              return . fromJust $
-                  parseTime defaultTimeLocale "%Y/%m/%d" (T.unpack dateString)
+    now <-
+        if isNothing per
+        then return (moment opts)
+        else do
+            dateString <- run "ledger" ["eval", "--now", fromJust per, "today"]
+            return . fromJust $
+                parseTime defaultTimeLocale "%Y/%m/%d" (T.unpack dateString)
 
     let today     = toGregorian (localDay now)
         yr        = fromIntegral (today^._1)
