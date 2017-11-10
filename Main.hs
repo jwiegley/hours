@@ -29,10 +29,10 @@ import           System.IO.Unsafe
 import           Text.Printf
 
 myTimeZone :: TimeZone
-myTimeZone = TimeZone (-420) True "PDT"
+myTimeZone = TimeZone (-480) False "PST"
 
 baeTimeZone :: TimeZone
-baeTimeZone = TimeZone (-240) True "EDT"
+baeTimeZone = TimeZone (-300) False "EST"
 
 mkUTCTime :: Integer -> Int -> Int -> Int -> Int -> Int -> UTCTime
 mkUTCTime year month day hour minute second =
@@ -53,11 +53,11 @@ mostRecentFridayNoon year month day hour adjust =
              - (if diff < 0
                 then 7 + diff
                 else diff)
-             - (if diff == 0 && hour < 12
+             - (if diff == 0 && hour < 6
                 then 7
                 else 0)
         (year', month', day') = toGregorian d'
-    in mkUTCTime year' month' day' 6 30 0
+    in mkUTCTime year' month' day' 5 30 0
 
 baeWeekRange :: Integer -> Int -> Int -> Int -> (UTCTime,UTCTime)
 baeWeekRange year month day hour =
