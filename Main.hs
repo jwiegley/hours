@@ -23,10 +23,15 @@ import qualified Data.Time.Parsers as Time
 import           Data.Time.Recurrence as R
 import           Options.Applicative
 import           Options.Applicative.Types (ReadM(..))
-import           Prelude hiding (filter)
 import           Shelly
 import           System.IO.Unsafe
 import           Text.Printf
+
+twoWeekStart :: UTCTime
+twoWeekStart = mkUTCTime 2017 12 29 12 0 0
+
+twoWeekDates :: [UTCTime]
+twoWeekDates = starting twoWeekStart $ recur (daily `by` 14)
 
 myTimeZone :: TimeZone
 myTimeZone = TimeZone (-480) False "PST"
@@ -42,33 +47,22 @@ mkUTCTime year month day hour minute second =
         (TimeOfDay (fromIntegral hour) (fromIntegral minute)
                    (realToFrac second))
 
-mostRecentFridayNoon :: Integer -> Int -> Int -> Int -> Integer -> UTCTime
-mostRecentFridayNoon year month day hour adjust =
-    let d = adjust `addDays`
-            fromGregorian (fromIntegral year) (fromIntegral month)
-                          (fromIntegral day)
-        (_,_,dow) = toWeekDate d
-        diff = toInteger (dow - 5)
-        d' = ModifiedJulianDay $ toModifiedJulianDay d
-             - (if diff < 0
-                then 7 + diff
-                else diff)
-             - (if diff == 0 && hour < 6
-                then 7
-                else 0)
-        (year', month', day') = toGregorian d'
-    in mkUTCTime year' month' day' 5 30 0
-
-baeWeekRange :: Integer -> Int -> Int -> Int -> (UTCTime,UTCTime)
-baeWeekRange year month day hour =
-    let f = mostRecentFridayNoon year month day hour in (f 0, f 7)
+baeTwoWeekRange :: Integer -> Int -> Int -> Int -> (UTCTime, UTCTime)
+baeTwoWeekRange year month day hour =
+    let w = mkUTCTime year month day hour 0 0 in
+    interval w twoWeekDates
+  where
+    interval t (x:y:xs)
+        | y > t     = (x, y)
+        | otherwise = interval t (y:xs)
+    interval _ _ = error "Never occurs"
 
 holidays :: Integer -> Int -> [Int]
 holidays year month =
     fromMaybe [] $ join $ lookup month <$> lookup year
         [ (2014, [ (12, [25, 26]) ])
-        , (2015, [ ( 1, [1])
-                 ])
+        , (2015, [ ( 1, [1]) ])
+        , (2018, [ ( 1, [1]) ])
         ]
 
 baeWorkHoursForDay :: Integer -> Int -> Int -> Int
@@ -141,7 +135,7 @@ main = execParser opts >>= doMain
                  <> header "hours - show hours worked so far")
 
 doMain :: Options -> IO ()
-doMain opts = shelly $ silently $ do
+doMain opts = shelly $ (if verbose opts then verbosely else silently) $ do
     let per = if null (period opts)
               then Nothing
               else Just (T.pack (period opts))
@@ -152,7 +146,7 @@ doMain opts = shelly $ silently $ do
         else do
             dateString <- run "ledger" ["eval", "--now", fromJust per, "today"]
             return . fromJust $
-                parseTime defaultTimeLocale "%Y/%m/%d" (T.unpack dateString)
+                parseTimeM True defaultTimeLocale "%Y/%m/%d" (T.unpack dateString)
 
     let today     = toGregorian (localDay now)
         yr        = fromIntegral (today^._1)
@@ -161,7 +155,7 @@ doMain opts = shelly $ silently $ do
         mnight    = localTimeToUTC baeTimeZone
                         (LocalTime (localDay now) midnight)
         thishr    = todHour (localTimeOfDay now)
-        (beg,end) = baeWeekRange yr mon day thishr
+        (beg,end) = baeTwoWeekRange yr mon day thishr
         tdyBeg    = if today == toGregorian (utctDay beg)
                     then beg
                     else mnight
@@ -178,7 +172,7 @@ doMain opts = shelly $ silently $ do
         loggedIn = length is > length os
 
     setStdin activeTimelog
-    data1 <- run "ledger" (["-f", "-", "--day-break", "print"])
+    data1 <- run "ledger" ["-f", "-", "--day-break", "print"]
     data2 <- if null (archive opts)
             then return ""
             else run "org2tc" [T.pack (archive opts), "-s", begs, "-e", ends]
@@ -226,7 +220,7 @@ doMain opts = shelly $ silently $ do
             , "workHrs:     " ++ show workHrs
             , "targHrs:     " ++ show targHrs
             , ""
-            , "indicator:   " ++ show indicator
+            , "indicator:   " ++ indicator
             , "paceMark:    " ++ show paceMark
             , ""
             , "length is:   " ++ show (length is)
@@ -234,17 +228,11 @@ doMain opts = shelly $ silently $ do
             , "loggedIn:    " ++ show loggedIn
             ]
 
-    -- liftIO $ printf "%s%.1fh (%.1fh) %.1f%%%s\n"
-    --     (T.unpack indicator) (abs discrep) hoursLeft paceMark
-    --     (if loggedIn
-    --      -- then printf "\n\ESC[37m🕓\ESC[0m %.2fh" todayHrs
-    --      then printf "\n🕓%.2fh" todayHrs
-    --      else T.unpack "")
-
-    liftIO $ printf "%s%.1fh (%.1fh)%s\n"
-        (T.unpack indicator) (abs discrep) hoursLeft
+    liftIO $ printf "%s%s%.1fh %.0f%% (%.1fh)\n"
         (if loggedIn
-         then printf " 🕓%.2fh" todayHrs
+         then printf "\ESC[37m🕓\ESC[0m %.1fh " todayHrs
          else T.unpack "")
+        indicator (abs discrep) paceMark hoursLeft
+
 
 -- Main.hs (hours) ends here
