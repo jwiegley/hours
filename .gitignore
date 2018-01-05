@@ -4,3 +4,5 @@
 /dist/
 /sizes.html
 /Setup
+/default.nix
+/shell.nix
