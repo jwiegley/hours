@@ -230,7 +230,7 @@ doMain opts = shelly $ (if verbose opts then verbosely else silently) $ do
 
     liftIO $ printf "%s%s%.1fh %.0f%% (%.1fh)\n"
         (if loggedIn
-         then printf "\ESC[37m🕓\ESC[0m %.1fh " todayHrs
+         then printf "\ESC[37m🕓\ESC[0m%.1fh " todayHrs
          else T.unpack "")
         indicator (abs discrep) paceMark hoursLeft
 
