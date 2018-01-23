@@ -17,6 +17,7 @@ import           Data.Time (defaultTimeLocale)
 import           Data.Time.Calendar
 import           Data.Time.Calendar.WeekDate
 import           Data.Time.Clock
+import           Data.Time.Clock.POSIX
 import           Data.Time.Format
 import           Data.Time.LocalTime
 import qualified Data.Time.Parsers as Time
@@ -26,6 +27,18 @@ import           Options.Applicative.Types (ReadM(..))
 import           Shelly
 import           System.IO.Unsafe
 import           Text.Printf
+
+data Variant
+    = BoolVal Bool
+    | DiffTimeVal NominalDiffTime
+    | DoubleVal Double
+    | IntVal Int
+    | DateTripleVal (Integer, Int, Int)
+    | LocalTimeVal LocalTime
+    | MaybeTextVal (Maybe Text)
+    | StringVal String
+    | TimeVal UTCTime
+    deriving (Eq, Ord, Show)
 
 twoWeekStart :: UTCTime
 twoWeekStart = mkUTCTime 2017 12 29 12 0 0
@@ -87,15 +100,15 @@ countWorkHours beg end =
 isWeekendDay :: Day -> Bool
 isWeekendDay day = let (_,_,dow) = toWeekDate day in dow == 6 || dow == 7
 
-balanceTotal :: Text -> Text -> Sh Float
-balanceTotal journal period = do
+balanceTotal :: Text -> Text -> Sh Double
+balanceTotal journal period' = do
     setStdin journal
     balance <- run "ledger" ["-f", "-", "--base", "-F", "%(scrub(total))\n"
-                           , "-p", period, "--day-break", "bal"]
+                           , "-p", period', "--day-break", "bal"]
     return $ case T.lines balance of
-        [] -> 0.0 :: Float
+        [] -> 0.0 :: Double
         xs -> (/ 3600.0)
-           $ (read :: String -> Float) . T.unpack . T.init
+           $ (read :: String -> Double) . T.unpack . T.init
            $ T.dropWhile (== ' ') (last xs)
 
 data Options = Options
@@ -105,6 +118,7 @@ data Options = Options
     , category :: String
     , archive  :: String
     , moment   :: LocalTime
+    , emacs    :: Bool
     }
 
 options :: Parser Options
@@ -125,6 +139,8 @@ options = Options
           (long "moment" <> help "Set notion of the current moment"
            <> value (unsafePerformIO $
                      (zonedTimeToLocalTime <$>) getZonedTime))
+
+    <*> switch (long "emacs" <> help "Emit statistics in Emacs Lisp form")
 
 main :: IO ()
 main = execParser opts >>= doMain
@@ -183,7 +199,7 @@ doMain opts = shelly $ (if verbose opts then verbosely else silently) $ do
     realHrs  <- balanceTotal combined (fromMaybe ("since " <> fmtDate beg) per)
     todayHrs <- balanceTotal combined "today"
 
-    let currHour  = fromIntegral (ceiling thismom) / 3600.0 / 3.0
+    let currHour  = fromIntegral (ceiling thismom :: Int) / 3600.0 / 3.0
         workHrs   = countWorkHours beg end
         targHrs   = countWorkHours beg mnight
         isWeekend = isWeekendDay (localDay now)
@@ -194,45 +210,74 @@ doMain opts = shelly $ (if verbose opts then verbosely else silently) $ do
         discrep   = realHrs - targetHrs
         hoursLeft = fromIntegral workHrs - realHrs
         indicator = if discrep < 0
-                    then "\ESC[31m↓\ESC[0m"
-                    else "\ESC[32m↑\ESC[0m"
+                    then "\ESC[0;31m↓\ESC[0m"
+                    else "\ESC[0;32m↑\ESC[0m"
         paceMark  = (realHrs * 100.0) / fromIntegral workHrs
 
-    when (verbose opts) $ liftIO $
-        putStrLn $ unlines
-            [ "today:       " ++ show today
-            , "now:         " ++ show now
-            , "beg:         " ++ T.unpack begs
-            , "end:         " ++ T.unpack ends
-            , "midnight:    " ++ T.unpack (fmtTime mnight)
-            , "tdyBeg:      " ++ T.unpack (fmtTime tdyBeg)
-            , ""
-            , "currHour:    " ++ show currHour
-            , "targetHrs:   " ++ show targetHrs
-            , "todayHrs:    " ++ show todayHrs
-            , "realHrs:     " ++ show realHrs
-            , "hoursLeft:   " ++ show hoursLeft
-            , "discrep:     " ++ show discrep
-            , ""
-            , "period:      " ++ show per
-            , "days:        " ++ show (floor (diffUTCTime end beg / 3600 / 24))
-            , "isWeekend:   " ++ show isWeekend
-            , "workHrs:     " ++ show workHrs
-            , "targHrs:     " ++ show targHrs
-            , ""
-            , "indicator:   " ++ indicator
-            , "paceMark:    " ++ show paceMark
-            , ""
-            , "length is:   " ++ show (length is)
-            , "length os:   " ++ show (length os)
-            , "loggedIn:    " ++ show loggedIn
-            ]
+        details :: [(Text, Variant)]
+        details =
+            [ ("today",     DateTripleVal today)
+            , ("now",       LocalTimeVal now)
+            , ("beg",       TimeVal beg)
+            , ("end",       TimeVal end)
+            , ("midnight",  TimeVal mnight)
+            , ("tdyBeg",    TimeVal tdyBeg)
+            , ("currHour",  DoubleVal currHour)
+            , ("targetHrs", DoubleVal targetHrs)
+            , ("todayHrs",  DoubleVal todayHrs)
+            , ("realHrs",   DoubleVal realHrs)
+            , ("hoursLeft", DoubleVal hoursLeft)
+            , ("discrep",   DoubleVal discrep)
+            , ("period",    MaybeTextVal per)
+            , ("days",      DiffTimeVal (diffUTCTime end beg / 3600 / 24))
+            , ("isWeekend", BoolVal isWeekend)
+            , ("workHrs",   IntVal workHrs)
+            , ("targHrs",   IntVal targHrs)
+            , ("indicator", StringVal indicator)
+            , ("paceMark",  DoubleVal paceMark)
+            , ("clockIns",  IntVal (length is))
+            , ("clockOuts", IntVal (length os))
+            , ("loggedIn",  BoolVal loggedIn) ]
 
-    liftIO $ printf "%s%s%.1fh %.0f%% (%.1fh)\n"
-        (if loggedIn
-         then printf "\ESC[37m🕓\ESC[0m%.1fh " todayHrs
-         else T.unpack "")
-        indicator (abs discrep) paceMark hoursLeft
+    liftIO $ do
+        when (verbose opts) $
+            forM_ details $ \(n, v) -> printf "%s: %s" n (show v)
 
+        if emacs opts
+            then do
+                putStr "("
+                forM_ details $ \(n, v) -> do
+                    putStr "("
+                    putStr (T.unpack n)
+                    putStr " . "
+                    putStr $ case v of
+                        BoolVal       True      -> "t"
+                        BoolVal       False     -> "nil"
+                        DiffTimeVal   x         -> show (floor x :: Int)
+                        DoubleVal     x         -> show x
+                        IntVal        x         -> show x
+                        DateTripleVal (y, m, d) -> printf "(%d %d %d)" y m d
+                        LocalTimeVal  x ->
+                            let secs = floor (utcTimeToPOSIXSeconds
+                                              (localTimeToUTC myTimeZone x))
+                                           :: Int in
+                            printf "(%d %d 0 0)"
+                                (secs `div` 2^(16 :: Int))
+                                (secs `mod` 2^(16 :: Int))
+                        MaybeTextVal  (Just x)  -> show x
+                        MaybeTextVal  Nothing   -> "nil"
+                        StringVal     x         -> show x
+                        TimeVal       x         ->
+                            let secs = floor (utcTimeToPOSIXSeconds x) :: Int in
+                            printf "(%d %d 0 0)"
+                                (secs `div` 2^(16 :: Int))
+                                (secs `mod` 2^(16 :: Int))
+                    putStrLn ")"
+                putStrLn ")"
+            else printf "%s%s%.1fh %.0f%% (%.1fh)\n"
+                (if loggedIn
+                 then printf "\ESC[37m🕓\ESC[0m%.1fh " todayHrs
+                 else T.unpack "")
+                indicator (abs discrep) paceMark hoursLeft
 
 -- Main.hs (hours) ends here
