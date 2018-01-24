@@ -235,6 +235,7 @@ parseLogbook now s = (isJust st, reverse ints')
 data Budget = Budget
     { budgetStart               :: ZonedTime
     , budgetNow                 :: ZonedTime
+    , budgetNowThere            :: ZonedTime
     , budgetEnd                 :: ZonedTime
 
     , budgetIdealExpected       :: Int
@@ -262,6 +263,7 @@ instance Show Budget where
   show Budget {..} = let v = variantToLisp in concat
     [ "((beg . ",                  v (TimeVal budgetStart), ")\n"
     , "(now . ",                   v (TimeVal budgetNow), ")\n"
+    , "(now-there . ",             v (TimeVal budgetNowThere), ")\n"
     , "(end . ",                   v (TimeVal budgetEnd), ")\n"
     , "(ideal-expected . ",        v (IntVal budgetIdealExpected), ")\n"
     , "(ideal-remaining . ",       v (IntVal budgetIdealRemaining), ")\n"
@@ -297,6 +299,7 @@ calculateBudget now activeTimelog =
 
     Budget { budgetStart               = beg
            , budgetNow                 = now
+           , budgetNowThere            = now'
            , budgetEnd                 = end
 
            , budgetIdealExpected       = expected
@@ -320,10 +323,14 @@ calculateBudget now activeTimelog =
            , budgetThisSym             = thisSym
            }
   where
-    (fromIntegral -> yr, fromIntegral -> mon, fromIntegral -> day) =
-        toGregorian (dayOf now)
+    secsAway   = (timeZoneMinutes timeZoneBAE -
+                  timeZoneMinutes (zonedTimeZone now)) * 60
+    now'       = addZonedTime (fromIntegral secsAway) now
 
-    (beg, end)  = baeTwoWeekRange now
+    (fromIntegral -> yr, fromIntegral -> mon, fromIntegral -> day) =
+        toGregorian (dayOf now')
+
+    (beg, end) = baeTwoWeekRange now'
 
     workIntsWorkHours = workIntervals beg end
     workIntsHours     = map (fmap workHoursToInt) workIntsWorkHours
@@ -332,20 +339,14 @@ calculateBudget now activeTimelog =
     (loggedIn, logbook) = parseLogbook now activeTimelog
     logbookHours = map (Budget.boundsToValue diffZonedTime) logbook
 
-    (active,  future)  = Budget.activeIntervals now workIntsHours
+    (active,  future)  = Budget.activeIntervals now' workIntsHours
 
     expected   = Budget.sumRange active
     remaining  = Budget.sumRange future
     totalWork  = expected + remaining
 
-    -- Split the work periods based on the dividing line at BAE headquarters,
-    -- since that is the measure for expectations of completed time.
-    secondsAway = (timeZoneMinutes timeZoneBAE -
-                   timeZoneMinutes (zonedTimeZone now)) * 60
-    nowBAE      = addZonedTime (fromIntegral secondsAway) now
-
     (active', future') =
-        Budget.divideIntervals diffZonedTime (*) nowBAE workIntsDiffTime
+        Budget.divideIntervals diffZonedTime (*) now' workIntsDiffTime
 
     expected'  = Budget.sumRange active'
     remaining' = Budget.sumRange future'
@@ -361,7 +362,7 @@ calculateBudget now activeTimelog =
     thisDone   = Budget.sumRange today
     thisExp    = (hoursLeft + thisDone) / fromIntegral (length future')
     thisLeft   = thisExp - thisDone
-    thisSym    = intVal <$> Budget.current now workIntsWorkHours
+    thisSym    = intVal <$> Budget.current now' workIntsWorkHours
 
 doMain :: Options -> IO ()
 doMain opts = do
