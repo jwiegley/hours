@@ -1,3 +1,42 @@
+;;; jobhours --- Companion code for the 'hours' Haskell utility
+
+;; Copyright (C) 2018 John Wiegley
+
+;; Author: John Wiegley <johnw@newartisans.com>
+;; Created: 12 Dec 2012
+;; Version: 3.0
+;; Keywords: hours
+;; X-URL: https://github.com/jwiegley/hours
+
+;; This program is free software; you can redistribute it and/or
+;; modify it under the terms of the GNU General Public License as
+;; published by the Free Software Foundation; either version 2, or (at
+;; your option) any later version.
+
+;; This program is distributed in the hope that it will be useful, but
+;; WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+;; General Public License for more details.
+
+;; You should have received a copy of the GNU General Public License
+;; along with GNU Emacs; see the file COPYING.  If not, write to the
+;; Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+;; Boston, MA 02111-1307, USA.
+
+;;; Commentary:
+
+;; This code calls out to the 'hours' utility and provides a UI display.
+
+(defgroup jobhours nil
+  "Companion code for the 'hours' Haskell utility"
+  :group 'jobhours)
+
+(defcustom jobhours-file "todo.txt"
+  "The Org-file from which time clock data is read.
+Note that the 'org2tc' utility must be on your PATH."
+  :type 'file
+  :group 'jobhours)
+
 (defun jobhours-dim-color (color cloudiness)
   (cl-destructuring-bind (h s l)
       (apply 'color-rgb-to-hsl (color-name-to-rgb color))
@@ -17,7 +56,8 @@
 
 (defun get-jobhours-string ()
   (with-temp-buffer
-    (call-process "jobhours" nil t nil "--emacs")
+    (call-process "hours" nil t nil
+                  "--file" (expand-file-name jobhours-file) "--emacs")
 
     (goto-char (point-min))
     (let* ((details (read (current-buffer)))
