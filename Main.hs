@@ -71,8 +71,8 @@ timeOf = localTimeOfDay . zonedTimeToLocalTime
 timeZoneEST :: TimeZone
 timeZoneEST = TimeZone (-300) False "EST"
 
-holidayTable :: [(Integer, [(Int, [Int])])]
-holidayTable = [ (2018, [ ( 1, [1]) ])
+holidayTable :: [ZonedTime]
+holidayTable = [ mkZonedTime timeZoneEST 2018 1 1 8 0
                ]
 
 data Variant
@@ -86,15 +86,15 @@ data Variant
     deriving (Eq, Ord, Show)
 
 data WorkHours
-    = NoWork
+    = Holiday
     | OffFriday
     | HalfFriday
     | RegularDay
     deriving (Eq, Show)
 
 workHoursToInt :: WorkHours -> Int
-workHoursToInt NoWork = 0
-workHoursToInt OffFriday = 0
+workHoursToInt Holiday    = 0
+workHoursToInt OffFriday  = 0
 workHoursToInt HalfFriday = 4
 workHoursToInt RegularDay = 9
 
@@ -121,10 +121,6 @@ baeTwoWeekRange year month day hour =
                         | otherwise = interval t (y:xs)
     interval _ _ = error "impossible"
 
-holidays :: Integer -> Int -> [Int]
-holidays year month =
-    fromMaybe [] $ join $ lookup month <$> lookup year holidayTable
-
 workIntervals :: ZonedTime -> ZonedTime -> [Interval ZonedTime WorkHours]
 workIntervals beg end = reify (zonedTimeZone beg) $ \(Proxy :: Proxy s) ->
     reverse . foldl' go []
@@ -137,6 +133,8 @@ workIntervals beg end = reify (zonedTimeZone beg) $ \(Proxy :: Proxy s) ->
     go xs (b, e)
         | b == beg =
           Interval b (addZonedTime (fromIntegral fullday) b) OffFriday : xs
+        | b `elem` holidayTable =
+          Interval b e Holiday : xs
         | otherwise =
           let (_, _, w) = toWeekDate (dayOf b)
           in case w of
@@ -246,6 +244,10 @@ doMain opts = do
         discrep     = completed - fromHours expected
         paceMark    = remaining' - hoursLeft
         futureDays  = hoursLeft / fromIntegral (length future)
+        todayOff    = case Budget.current now workints of
+            Just (intVal -> Holiday) -> True
+            Just (intVal -> OffFriday) -> True
+            _ -> False
         indicator   = if discrep < 0
                       then "\ESC[0;31m↓\ESC[0m"
                       else "\ESC[0;32m↑\ESC[0m" :: Text
@@ -268,6 +270,7 @@ doMain opts = do
                   , ("my-discrepancy",   DiffTimeVal discrep)
                   , ("pace-mark",        DiffTimeVal paceMark)
                   , ("logged-in",        BoolVal loggedIn)
+                  , ("today-off",        BoolVal todayOff)
                   ]
 
     when (verbose opts) $ do
