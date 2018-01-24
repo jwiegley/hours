@@ -41,7 +41,7 @@ timeZoneBAE = TimeZone (-300) False "EST"
 
 holidayTable :: [ZonedTime]
 holidayTable =
-    [ mkZonedTime timeZoneBAE 2018 1 1 8 0
+    [ mkZonedTime timeZoneBAE 2018 1 1 9 0
     ]
 
 ------------------------------------------------------------------------------
@@ -99,11 +99,12 @@ data WorkHours
     | RegularDay
     deriving (Eq, Show)
 
-workHoursToInt :: WorkHours -> Int
-workHoursToInt Holiday    = 0
-workHoursToInt OffFriday  = 0
-workHoursToInt HalfFriday = 4
-workHoursToInt RegularDay = 9
+workHoursToInt :: Bool -> WorkHours -> Int
+workHoursToInt _     Holiday    = 0
+workHoursToInt _     OffFriday  = 0
+workHoursToInt _     HalfFriday = 4
+workHoursToInt False RegularDay = 9
+workHoursToInt True  RegularDay = 8
 
 data Variant
     = BoolVal Bool
@@ -139,7 +140,7 @@ variantToLisp = \case
 -- Generate the list of intervals for expected work
 
 twoWeekStart :: ZonedTime
-twoWeekStart = mkZonedTime timeZoneBAE 2017 12 29 8 0
+twoWeekStart = mkZonedTime timeZoneBAE 2017 12 29 9 0
 
 twoWeekDates :: [ZonedTime]
 twoWeekDates = reify timeZoneBAE $ \(Proxy :: Proxy s) ->
@@ -160,8 +161,8 @@ baeTwoWeekRange moment =
                         | otherwise = interval t (y:xs)
     interval _ _ = error "impossible"
 
-workIntervals :: ZonedTime -> ZonedTime -> [Interval ZonedTime WorkHours]
-workIntervals beg end = reify (zonedTimeZone beg) $ \(Proxy :: Proxy s) ->
+workIntervals :: Bool -> ZonedTime -> ZonedTime -> [Interval ZonedTime WorkHours]
+workIntervals mine beg end = reify (zonedTimeZone beg) $ \(Proxy :: Proxy s) ->
     concatMap go
         . takeWhile (< end)
         . map unTagged
@@ -169,7 +170,7 @@ workIntervals beg end = reify (zonedTimeZone beg) $ \(Proxy :: Proxy s) ->
         $ recur daily >==> R.filter (WeekDays [Monday .. Friday])
   where
     go b | b == beg =
-           [Interval b (addh 8 b) OffFriday]
+           [Interval b (addh 8 b) (if mine then RegularDay else OffFriday)]
 
          | b `elem` holidayTable =
            [Interval b (addh 9 b) Holiday]
@@ -181,7 +182,7 @@ workIntervals beg end = reify (zonedTimeZone beg) $ \(Proxy :: Proxy s) ->
                     [ Interval b mid HalfFriday
                     , Interval mid (addh 4 mid) HalfFriday ]
                 _ ->
-                    [Interval b (addh 9 b) RegularDay]
+                    [Interval b (addh (if mine then 8 else 9) b) RegularDay]
 
     addh n = addZonedTime (n * 3600)
 
@@ -238,25 +239,19 @@ data Budget = Budget
     , budgetIdealRemaining      :: Int
     , budgetIdealExpectedExact  :: NominalDiffTime
     , budgetIdealRemainingExact :: NominalDiffTime
-    , budgetIdealTotal          :: Int
     , budgetIdealDaysLeft       :: Int
     , budgetIdealDaysLeftIncl   :: Int
-    , budgetIdealPaceMark       :: Double
 
     , budgetRealCompleted       :: NominalDiffTime
-    , budgetRealRemaining       :: NominalDiffTime
     , budgetRealThisExpected    :: NominalDiffTime
     , budgetRealThisCompleted   :: NominalDiffTime
-    , budgetRealThisRemaining   :: NominalDiffTime
-    , budgetRealDiscrepancy     :: NominalDiffTime
-    , budgetRealPaceMark        :: Double
 
     , budgetLoggedIn            :: Bool
     , budgetThisSym             :: Maybe WorkHours
     }
 
 instance Show Budget where
-  show Budget {..} = let v = variantToLisp in concat
+  show b@Budget {..} = let v = variantToLisp in concat
     [ "((beg . ",                  v (TimeVal budgetStart), ")\n"
     , "(now . ",                   v (TimeVal budgetNow), ")\n"
     , "(end . ",                   v (TimeVal budgetEnd), ")\n"
@@ -264,20 +259,44 @@ instance Show Budget where
     , "(ideal-remaining . ",       v (IntVal budgetIdealRemaining), ")\n"
     , "(ideal-expected-exact . ",  v (DiffTimeVal budgetIdealExpectedExact), ")\n"
     , "(ideal-remaining-exact . ", v (DiffTimeVal budgetIdealRemainingExact), ")\n"
-    , "(ideal-total . ",           v (IntVal budgetIdealTotal), ")\n"
+    , "(ideal-total . ",           v (IntVal (budgetIdealTotal b)), ")\n"
     , "(ideal-days-left . ",       v (IntVal budgetIdealDaysLeft), ")\n"
     , "(ideal-days-left-incl . ",  v (IntVal budgetIdealDaysLeftIncl), ")\n"
-    , "(ideal-pace-mark . ",       v (DoubleVal budgetIdealPaceMark), ")\n"
+    , "(ideal-pace-mark . ",       v (DoubleVal (budgetIdealPaceMark b)), ")\n"
     , "(real-completed . ",        v (DiffTimeVal budgetRealCompleted), ")\n"
-    , "(real-remaining . ",        v (DiffTimeVal budgetRealRemaining), ")\n"
+    , "(real-remaining . ",        v (DiffTimeVal (budgetRealRemaining b)), ")\n"
     , "(real-this-expected . ",    v (DiffTimeVal budgetRealThisExpected), ")\n"
     , "(real-this-completed . ",   v (DiffTimeVal budgetRealThisCompleted), ")\n"
-    , "(real-this-remaining . ",   v (DiffTimeVal budgetRealThisRemaining), ")\n"
-    , "(real-discrepancy . ",      v (DiffTimeVal budgetRealDiscrepancy), ")\n"
-    , "(real-pace-mark . ",        v (DoubleVal budgetRealPaceMark), ")\n"
+    , "(real-this-remaining . ",   v (DiffTimeVal (budgetRealThisRemaining b)), ")\n"
+    , "(real-discrepancy . ",      v (DiffTimeVal (budgetRealDiscrepancy b)), ")\n"
+    , "(real-pace-mark . ",        v (DoubleVal (budgetRealPaceMark b)), ")\n"
     , "(logged-in . ",             v (BoolVal budgetLoggedIn), ")\n"
     , "(this-sym . ",              v (WorkHoursVal budgetThisSym), "))\n"
     ]
+
+budgetIdealTotal :: Budget -> Int
+budgetIdealTotal b = budgetIdealExpected b + budgetIdealRemaining b
+
+budgetIdealPaceMark :: Budget -> Double
+budgetIdealPaceMark b =
+    (100.0 * toHours (budgetIdealExpectedExact b))
+        / fromIntegral (budgetIdealTotal b)
+
+budgetRealRemaining :: Budget -> NominalDiffTime
+budgetRealRemaining b =
+    fromHours (budgetIdealTotal b) - budgetRealCompleted b
+
+budgetRealThisRemaining :: Budget -> NominalDiffTime
+budgetRealThisRemaining b =
+    budgetRealThisExpected b - budgetRealThisCompleted b
+
+budgetRealDiscrepancy :: Budget -> NominalDiffTime
+budgetRealDiscrepancy b = budgetRealCompleted b - budgetIdealExpectedExact b
+
+budgetRealPaceMark :: Budget -> Double
+budgetRealPaceMark b =
+    (100.0 * toHours (budgetRealCompleted b))
+        / fromIntegral (budgetIdealTotal b)
 
 calculateBudget :: ZonedTime -> String -> Budget
 calculateBudget now activeTimelog =
@@ -303,27 +322,22 @@ calculateBudget now activeTimelog =
            , budgetIdealExpected       = expected
            , budgetIdealRemaining      = remaining
            , budgetIdealExpectedExact  = expected'
-           , budgetIdealRemainingExact = remaining'
-           , budgetIdealTotal          = totalWork
+           , budgetIdealRemainingExact = Budget.sumRange future'
            , budgetIdealDaysLeft       = length future
            , budgetIdealDaysLeftIncl   = length future'
-           , budgetIdealPaceMark       = passage
 
            , budgetRealCompleted       = completed
-           , budgetRealRemaining       = hoursLeft
            , budgetRealThisExpected    = thisExp
            , budgetRealThisCompleted   = thisDone
-           , budgetRealThisRemaining   = thisLeft
-           , budgetRealDiscrepancy     = discrep
-           , budgetRealPaceMark        = paceMark
 
            , budgetLoggedIn            = loggedIn
-           , budgetThisSym             = thisSym
+           , budgetThisSym             =
+             intVal <$> Budget.current now' workIntsWorkHours
            }
   where
-    -- Since I don't work from 5-2, I adjust real expectations to compute as
+    -- Since I don't work from 6-2, I adjust real expectations to compute as
     -- if I were situated at the BAE office and working from there. This
-    -- better models an ordinary 8-5 workday.
+    -- better models an ordinary 9-5 workday.
     secsAway   = (timeZoneMinutes timeZoneBAE -
                   timeZoneMinutes (zonedTimeZone now)) * 60
     now'       = utcToZonedTime timeZoneBAE
@@ -335,14 +349,14 @@ calculateBudget now activeTimelog =
 
     (beg, end) = baeTwoWeekRange now'
 
-    workIntsWorkHours = workIntervals beg end
-    workIntsHours     = map (fmap workHoursToInt) workIntsWorkHours
+    useMyNotionOfWorkTime = True
+    hoursToInt = workHoursToInt useMyNotionOfWorkTime
+
+    workIntsWorkHours = workIntervals useMyNotionOfWorkTime beg end
+    workIntsHours     = map (fmap hoursToInt) workIntsWorkHours
     workIntsDiffTime  = map (fmap fromHours) workIntsHours
 
-    (loggedIn, logbook) = parseLogbook now activeTimelog
-    logbookHours = map (Budget.boundsToValue diffZonedTime) logbook
-
-    (active,  future)  = Budget.activeIntervals now' workIntsHours
+    (active, future) = Budget.activeIntervals now' workIntsHours
 
     expected   = Budget.sumRange active
     remaining  = Budget.sumRange future
@@ -352,20 +366,17 @@ calculateBudget now activeTimelog =
         Budget.divideIntervals diffZonedTime (*) now' workIntsDiffTime
 
     expected'  = Budget.sumRange active'
-    remaining' = Budget.sumRange future'
-    passage    = (100.0 * toHours expected') / fromIntegral totalWork
+
+    (loggedIn, logbook) = parseLogbook now activeTimelog
+    logbookHours = map (Budget.boundsToValue diffZonedTime) logbook
 
     completed  = Budget.sumRange logbookHours
     hoursLeft  = fromHours totalWork - completed
-    discrep    = completed - expected'
-    paceMark   = (100.0 * toHours completed) / fromIntegral totalWork
 
     thisBeg    = mkZonedTime (zonedTimeZone now) yr mon day 0 0
     (_, today) = Budget.divideIntervals diffZonedTime (*) thisBeg logbookHours
     thisDone   = Budget.sumRange today
     thisExp    = (hoursLeft + thisDone) / fromIntegral (length future')
-    thisLeft   = thisExp - thisDone
-    thisSym    = intVal <$> Budget.current now' workIntsWorkHours
 
 doMain :: Options -> IO ()
 doMain opts = do
