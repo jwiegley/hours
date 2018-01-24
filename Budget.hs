@@ -4,11 +4,11 @@
 
 module Budget where
 
-import Data.Foldable
+import Data.Foldable (Foldable(toList))
 import Data.List (sortOn)
 import Data.List.NonEmpty (NonEmpty(..))
-import Data.Semigroup
-import Data.These
+import Data.Semigroup (Semigroup((<>)), Sum(Sum, getSum))
+import Data.These (These(..))
 
 data Interval t a = Interval
     { intBeg :: t                -- ^ inclusive begin
@@ -65,7 +65,7 @@ splitIntervals t xs =
           []  -> Nothing
           [a] -> Just a
           _   -> error "Overlapping intervals"
-    , dropWhile (\i -> intBeg i < t) l
+    , dropWhile (\i -> intBeg i <= t) l
     )
   where
     l = toList xs

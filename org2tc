@@ -1,30 +1,71 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 
-# A simple script that takes an org-mode file as input, and prints a timeclock
-# file as output.  This can then be read directly by Ledger for fancy time
-# reporting and querying.
+'''Take an org-mode file as input and print a timeclock file as
+output. This can then be read directly by Ledger for fancy time
+reporting and querying. Fields :BILLCODE: and :TASKCODE: are parsed to
+generate lines compatible with the format expected by ledger
+("billcode taskcode").
 
+See also http://ledger-cli.org/2.6/ledger.html#Using-timeclock-to-record-billable-time
+'''
+
+from __future__ import print_function
+
+import argparse
+import locale
+locale.setlocale(locale.LC_ALL, '')
 import sys
 import re
 import time
+
+iso_date_fmt = "%Y-%m-%d %H:%M:%S"
 
 def parse_org_time(s):
     return time.strptime(s, "%Y-%m-%d %a %H:%M")
 
 def parse_timestamp(s):
-    return time.strptime(s, "%Y-%m-%d %H:%M:%S")
+    if s[0] == '[':
+        return time.strptime(s, "[%Y-%m-%d %a %H:%M]")
+    else:
+        return time.strptime(s, iso_date_fmt)
 
 events       = []
 last_heading = None
 clocks       = []
-data         = sys.argv[1]
-range_start  = parse_timestamp(sys.argv[2]) if len(sys.argv) > 2 else None
-range_end    = parse_timestamp(sys.argv[3]) if len(sys.argv) > 3 else None
-regex        = sys.argv[4] if len(sys.argv) > 4 else None
+
+parser = argparse.ArgumentParser(description='convert org clocks into timeclock',
+                                 epilog=__doc__ +
+                                 '''Note that TIME is provided in the following format: %s'''
+                                 % iso_date_fmt)
+parser.add_argument('orgfile', help='Org file to process')
+parser.add_argument('-s', '--start', metavar='TIME', help='process only entries from this date')
+parser.add_argument('-e', '--end', metavar='TIME', help='process only entries to this date')
+parser.add_argument('-r', '--regex', help='process only entries matching this regex')
+parser.add_argument('-o', '--output', help='output file (default: stdout)',
+                    type=argparse.FileType('w'), default=sys.stdout)
+args = parser.parse_args()
+
+data         = args.orgfile
+range_start  = parse_timestamp(args.start) if args.start else None
+range_end    = parse_timestamp(args.end) if args.end else None
+regex        = args.regex
 fd           = open(data, "r")
 headings     = [None] * 9
+acct         = "<None>"
 
 (billcode, taskcode) = ("<Unknown>", None)
+
+def add_events():
+    # XXX: those globals should really be cleaned up, maybe through a clock object or named tuple
+    global acct, clocks, billcode, taskcode, events, todo_keyword, last_heading
+    if clocks:
+        for (clock_in, clock_out, billcode, taskcode) in clocks:
+            if billcode and ":" not in billcode and taskcode:
+                acct = "%s:%s" % (billcode, taskcode)
+            events.append((clock_in, clock_out, todo_keyword,
+                           ("%s  %s" % (acct, last_heading))
+                           if acct else last_heading))
+        clocks = []
 
 for line in fd:
     match = re.search("^(\*+)\s*(.+)", line)
@@ -33,12 +74,13 @@ for line in fd:
         headings[depth] = match.group(2)
 
     depth = 0
-    match = re.search("^(\*+)\s*(([A-Z]{3}[A-Z]+)(\s+\[#[ABC]\])?)?\s*(.+)",
-                      line)
+    match = re.search("^(\*+)\s+(TODO|DONE)?(\s+\[#[ABC]\])?\s*(.+)", line)
     if match:
+        add_events()
+
         depth = len(match.group(1))
-        todo_keyword = match.group(3)
-        last_heading = match.group(5)
+        todo_keyword = match.group(2)
+        last_heading = match.group(4)
         match = re.search("(.+?)\s+:\S+:$", last_heading)
         if match:
             last_heading = match.group(1)
@@ -76,20 +118,11 @@ for line in fd:
                 clock_out = None
             if (not range_start or clock_in >= range_start) and \
                (not range_end or clock_in < range_end):
-               clocks.append((clock_in, clock_out))
+               clocks.append((clock_in, clock_out, billcode, taskcode))
             elif clock_in < range_start and clock_out > range_start:
-               clocks.append((range_start, clock_out))
+               clocks.append((range_start, clock_out, billcode, taskcode))
             elif clock_in < range_end and clock_out > range_end:
-               clocks.append((clock_in, range_end))
-
-            if clocks:
-                if billcode and ":" not in billcode and taskcode:
-                    billcode = "%s:%s" % (billcode, taskcode)
-                for (clock_in, clock_out) in clocks:
-                    events.append((clock_in, clock_out, todo_keyword,
-                                   ("%s  %s" % (billcode, last_heading))
-                                   if billcode else last_heading))
-                clocks = []
+               clocks.append((clock_in, range_end, billcode, taskcode))
 
         match = re.search(":BILLCODE:\s+(.+)", line)
         if match:
@@ -101,26 +134,16 @@ for line in fd:
             taskcode = match.group(1)
 
 fd.close()
+add_events()
 
-def event_compare(x, y):
-    xt = time.mktime(x[0])
-    yt = time.mktime(y[0])
-    if xt < yt:
-        return -1
-    elif xt > yt:
-        return 1
-    else:
-        return 0
-
-events.sort(event_compare)
+events.sort(key=lambda x: time.mktime(x[0]))
 
 for event in events:
-    print "i %s %s" % (time.strftime("%Y/%m/%d %H:%M:%S", event[0]), event[3])
+    print("i %s %s" % (time.strftime(iso_date_fmt, event[0]), event[3]),
+          file=args.output)
     if event[1]:
-        if event[2] == "DONE":
-            print "O",
-        else:
-            print "o",
-        print "%s" % time.strftime("%Y/%m/%d %H:%M:%S", event[1])
+        print("%s %s" % ('O' if event[2] == 'DONE' else 'o',
+                         time.strftime(iso_date_fmt, event[1])),
+              file=args.output)
 
 # org2tc ends here
