@@ -12,7 +12,6 @@ module Main where
 import qualified Budget
 import           Budget (Interval(..))
 import           Control.Exception (assert)
-import           Control.Monad (ap)
 import           Data.Char (toLower)
 import           Data.Foldable (Foldable(foldl'))
 import           Data.List (intercalate)
@@ -73,9 +72,10 @@ diffZonedTime :: ZonedTime -> ZonedTime -> NominalDiffTime
 diffZonedTime x y = diffUTCTime (zonedTimeToUTC x)
                                 (zonedTimeToUTC y)
 
-addZonedTime :: NominalDiffTime -> ZonedTime -> ZonedTime
+addZonedTime :: Int -> ZonedTime -> ZonedTime
 addZonedTime x y = utcToZonedTime (zonedTimeZone y)
-                                  (addUTCTime x (zonedTimeToUTC y))
+                                  (addUTCTime (fromIntegral x)
+                                              (zonedTimeToUTC y))
 
 dayOf :: ZonedTime -> Day
 dayOf = localDay . zonedTimeToLocalTime
@@ -162,31 +162,28 @@ baeTwoWeekRange moment =
 
 workIntervals :: ZonedTime -> ZonedTime -> [Interval ZonedTime WorkHours]
 workIntervals beg end = reify (zonedTimeZone beg) $ \(Proxy :: Proxy s) ->
-    reverse . foldl' go []
-            . ap zip tail
-            . takeWhile (<= end)
-            . map unTagged
-            . starting (Tagged beg :: Tagged s ZonedTime)
-            $ recur daily >==> R.filter (WeekDays [Monday .. Friday])
+    concatMap go
+        . takeWhile (< end)
+        . map unTagged
+        . starting (Tagged beg :: Tagged s ZonedTime)
+        $ recur daily >==> R.filter (WeekDays [Monday .. Friday])
   where
-    go xs (b, e)
-        | b == beg =
-          Interval b (addZonedTime (fromIntegral fullday) b) OffFriday : xs
+    go b | b == beg =
+           [Interval b (addh 8 b) OffFriday]
 
-        | b `elem` holidayTable =
-          Interval b e Holiday : xs
+         | b `elem` holidayTable =
+           [Interval b (addh 9 b) Holiday]
 
-        | otherwise =
-          let (_, _, w) = toWeekDate (dayOf b)
-          in case w of
-               5 -> let mid = addZonedTime (fromIntegral midshift) b in
-                   Interval mid e HalfFriday :
-                   Interval b mid HalfFriday : xs
-               _ ->
-                   Interval b e RegularDay : xs
+         | otherwise =
+           let (_, _, w) = toWeekDate (dayOf b)
+           in case w of
+                5 -> let mid = addh 4 b in
+                    [ Interval b mid HalfFriday
+                    , Interval mid (addh 4 mid) HalfFriday ]
+                _ ->
+                    [Interval b (addh 9 b) RegularDay]
 
-    midshift = (3600 :: Int) * 4
-    fullday  = (3600 :: Int) * 24
+    addh n = addZonedTime (n * 3600)
 
 ------------------------------------------------------------------------------
 -- Parse the timelog of actually worked intervals
@@ -235,7 +232,6 @@ parseLogbook now s = (isJust st, reverse ints')
 data Budget = Budget
     { budgetStart               :: ZonedTime
     , budgetNow                 :: ZonedTime
-    , budgetNowThere            :: ZonedTime
     , budgetEnd                 :: ZonedTime
 
     , budgetIdealExpected       :: Int
@@ -263,7 +259,6 @@ instance Show Budget where
   show Budget {..} = let v = variantToLisp in concat
     [ "((beg . ",                  v (TimeVal budgetStart), ")\n"
     , "(now . ",                   v (TimeVal budgetNow), ")\n"
-    , "(now-there . ",             v (TimeVal budgetNowThere), ")\n"
     , "(end . ",                   v (TimeVal budgetEnd), ")\n"
     , "(ideal-expected . ",        v (IntVal budgetIdealExpected), ")\n"
     , "(ideal-remaining . ",       v (IntVal budgetIdealRemaining), ")\n"
@@ -286,6 +281,10 @@ instance Show Budget where
 
 calculateBudget :: ZonedTime -> String -> Budget
 calculateBudget now activeTimelog =
+    -- trace ("beg      = " ++ show beg) $
+    -- trace ("now      = " ++ show now) $
+    -- trace ("now'     = " ++ show now') $
+    -- trace ("end      = " ++ show end) $
     -- trace ("workints = " ++ Budget.showIntervals workIntsWorkHours) $
     -- trace ("active   = " ++ Budget.showIntervals active) $
     -- trace ("active'  = " ++ Budget.showIntervals active') $
@@ -299,7 +298,6 @@ calculateBudget now activeTimelog =
 
     Budget { budgetStart               = beg
            , budgetNow                 = now
-           , budgetNowThere            = now'
            , budgetEnd                 = end
 
            , budgetIdealExpected       = expected
@@ -323,9 +321,14 @@ calculateBudget now activeTimelog =
            , budgetThisSym             = thisSym
            }
   where
+    -- Since I don't work from 5-2, I adjust real expectations to compute as
+    -- if I were situated at the BAE office and working from there. This
+    -- better models an ordinary 8-5 workday.
     secsAway   = (timeZoneMinutes timeZoneBAE -
                   timeZoneMinutes (zonedTimeZone now)) * 60
-    now'       = addZonedTime (fromIntegral secsAway) now
+    now'       = utcToZonedTime timeZoneBAE
+                                (addUTCTime (fromIntegral (- secsAway))
+                                            (zonedTimeToUTC now))
 
     (fromIntegral -> yr, fromIntegral -> mon, fromIntegral -> day) =
         toGregorian (dayOf now')
