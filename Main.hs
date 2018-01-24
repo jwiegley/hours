@@ -349,6 +349,8 @@ calculateBudget now activeTimelog =
 
     (beg, end) = baeTwoWeekRange now'
 
+    -- Instead of BAE's work schedule using off-Fridays, I use a normal work
+    -- pattern based on not taking off those Fridays.
     useMyNotionOfWorkTime = True
     hoursToInt = workHoursToInt useMyNotionOfWorkTime
 
