@@ -29,6 +29,9 @@ foldMapBounds f = foldMap (\i -> f (intBeg i) (intEnd i))
 foldMapValues :: (Foldable f, Monoid m) => (a -> m) -> f (Interval t a) -> m
 foldMapValues f = foldMap (f . intVal)
 
+boundsToValue :: (t -> t -> u) -> Interval t a -> Interval t u
+boundsToValue delta i = i { intVal = delta (intEnd i) (intBeg i) }
+
 sumRange :: Num a => [Interval t a] -> a
 sumRange = getSum . foldMapValues Sum
 

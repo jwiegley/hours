@@ -9,8 +9,8 @@
 
 module Main where
 
+import qualified Budget
 import           Budget (Interval(..))
-import qualified Budget (sumRange, current, divideIntervals, activeIntervals)
 import           Control.Exception (assert)
 import           Control.Monad (ap)
 import           Data.Char (toLower)
@@ -111,20 +111,25 @@ data Variant
     | DoubleVal Double
     | IntVal Int
     | StringVal String
-    | SymbolVal String
+    | WorkHoursVal (Maybe WorkHours)
     | TimeVal ZonedTime
-    deriving (Eq, Ord, Show)
+    deriving (Eq, Show)
 
 variantToLisp :: Variant -> String
 variantToLisp = \case
-    BoolVal     True  -> "t"
-    BoolVal     False -> "nil"
-    DoubleVal   x     -> printf "%.1f" x
-    DiffTimeVal x     -> printf "%.1f" (toHours x)
-    IntVal      x     -> show x
-    StringVal   x     -> show x
-    SymbolVal   x     -> x
-    TimeVal     x     ->
+    BoolVal      True  -> "t"
+    BoolVal      False -> "nil"
+    DoubleVal    x     -> printf "%.1f" x
+    DiffTimeVal  x     -> printf "%.1f" (toHours x)
+    IntVal       x     -> show x
+    StringVal    x     -> show x
+    WorkHoursVal x     -> case x of
+        Just Holiday    -> "holiday"
+        Just OffFriday  -> "off-friday"
+        Just HalfFriday -> "half-friday"
+        Just RegularDay -> "regular-day"
+        Nothing         -> "not-working"
+    TimeVal      x     ->
         let secs = floor (utcTimeToPOSIXSeconds
                           (zonedTimeToUTC x)) :: Int in
         printf "(%d %d 0 0)" (secs `div` 2^(16 :: Int))
@@ -250,7 +255,7 @@ data Budget = Budget
     , budgetRealPaceMark        :: Double
 
     , budgetLoggedIn            :: Bool
-    , budgetThisSym             :: String
+    , budgetThisSym             :: Maybe WorkHours
     }
 
 instance Show Budget where
@@ -274,18 +279,18 @@ instance Show Budget where
     , "(real-discrepancy . ",      v (DiffTimeVal budgetRealDiscrepancy), ")\n"
     , "(real-pace-mark . ",        v (DoubleVal budgetRealPaceMark), ")\n"
     , "(logged-in . ",             v (BoolVal budgetLoggedIn), ")\n"
-    , "(this-sym . ",              v (SymbolVal budgetThisSym), "))\n"
+    , "(this-sym . ",              v (WorkHoursVal budgetThisSym), "))\n"
     ]
 
 calculateBudget :: ZonedTime -> String -> Budget
 calculateBudget now activeTimelog =
-    -- trace ("workints = " ++ Budget.showIntervals workints) $
-    -- trace ("active   = " ++ Budget.showIntervals active)   $
-    -- trace ("active'  = " ++ Budget.showIntervals active')  $
-    -- trace ("future   = " ++ Budget.showIntervals future)   $
-    -- trace ("future'  = " ++ Budget.showIntervals future')  $
-    -- trace ("logbook  = " ++ Budget.showIntervals logbook)  $
-    -- trace ("tdys     = " ++ Budget.showIntervals tdys)     $
+    -- trace ("workints = " ++ Budget.showIntervals workIntsWorkHours) $
+    -- trace ("active   = " ++ Budget.showIntervals active) $
+    -- trace ("active'  = " ++ Budget.showIntervals active') $
+    -- trace ("future   = " ++ Budget.showIntervals future) $
+    -- trace ("future'  = " ++ Budget.showIntervals future') $
+    -- trace ("logbook  = " ++ Budget.showIntervals logbook) $
+    -- trace ("today    = " ++ Budget.showIntervals today) $
 
     assert (beg <= now) $
     assert (now < end)
@@ -318,43 +323,45 @@ calculateBudget now activeTimelog =
     (fromIntegral -> yr, fromIntegral -> mon, fromIntegral -> day) =
         toGregorian (dayOf now)
 
-    (beg, end) = baeTwoWeekRange now
-    workints = workIntervals beg end
+    (beg, end)  = baeTwoWeekRange now
+
+    workIntsWorkHours = workIntervals beg end
+    workIntsHours     = map (fmap workHoursToInt) workIntsWorkHours
+    workIntsDiffTime  = map (fmap fromHours) workIntsHours
 
     (loggedIn, logbook) = parseLogbook now activeTimelog
+    logbookHours = map (Budget.boundsToValue diffZonedTime) logbook
 
-    (active, future) = Budget.activeIntervals now workints
-    (active', future') =
-        Budget.divideIntervals diffZonedTime (*) now
-            (map (fmap (fromHours . workHoursToInt)) workints)
+    (active,  future)  = Budget.activeIntervals now workIntsHours
 
-    sumWork    = Budget.sumRange . map (fmap workHoursToInt)
-    expected   = sumWork active
-    remaining  = sumWork future
+    expected   = Budget.sumRange active
+    remaining  = Budget.sumRange future
     totalWork  = expected + remaining
+
+    -- Split the work periods based on the dividing line at BAE headquarters,
+    -- since that is the measure for expectations of completed time.
+    secondsAway = (timeZoneMinutes timeZoneBAE -
+                   timeZoneMinutes (zonedTimeZone now)) * 60
+    nowBAE      = addZonedTime (fromIntegral secondsAway) now
+
+    (active', future') =
+        Budget.divideIntervals diffZonedTime (*) nowBAE workIntsDiffTime
+
     expected'  = Budget.sumRange active'
     remaining' = Budget.sumRange future'
     passage    = (100.0 * toHours expected') / fromIntegral totalWork
 
-    timesVal i = i { intVal = diffZonedTime (intEnd i) (intBeg i) }
-    worked     = map timesVal logbook
-    completed  = Budget.sumRange worked
+    completed  = Budget.sumRange logbookHours
     hoursLeft  = fromHours totalWork - completed
     discrep    = completed - expected'
     paceMark   = (100.0 * toHours completed) / fromIntegral totalWork
 
     thisBeg    = mkZonedTime (zonedTimeZone now) yr mon day 0 0
-    (_, tdys)  = Budget.divideIntervals diffZonedTime (*) thisBeg worked
-    thisDone   = Budget.sumRange tdys
+    (_, today) = Budget.divideIntervals diffZonedTime (*) thisBeg logbookHours
+    thisDone   = Budget.sumRange today
     thisExp    = (hoursLeft + thisDone) / fromIntegral (length future')
     thisLeft   = thisExp - thisDone
-
-    thisSym = case Budget.current now workints of
-        Just (intVal -> Holiday)    -> "holiday"
-        Just (intVal -> OffFriday)  -> "off-friday"
-        Just (intVal -> HalfFriday) -> "half-friday"
-        Just (intVal -> RegularDay) -> "regular-day"
-        _                          -> "not-working"
+    thisSym    = intVal <$> Budget.current now workIntsWorkHours
 
 doMain :: Options -> IO ()
 doMain opts = do
