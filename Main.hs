@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ViewPatterns #-}
@@ -63,6 +64,12 @@ instance Reifies s TimeZone => Moment (Tagged s ZonedTime) where
 instance Reifies s TimeZone => CalendarTimeConvertible (Tagged s ZonedTime) where
   toCalendarTime (Tagged z) = toCalendarTime z
   fromCalendarTime t = Tagged <$> fromCalendarTime t
+
+instance Budget.HasDelta ZonedTime NominalDiffTime where
+    delta = diffZonedTime
+
+instance Budget.Scalable NominalDiffTime NominalDiffTime where
+    scale = (*)
 
 mkZonedTime :: TimeZone -> Integer -> Int -> Int -> Int -> Int -> ZonedTime
 mkZonedTime tz y m d hh mm =
@@ -332,7 +339,7 @@ calculateBudget now activeTimelog =
 
            , budgetLoggedIn            = loggedIn
            , budgetThisSym             =
-             intVal <$> Budget.current now' workIntsWorkHours
+             Budget.value <$> Budget.current now' workIntsWorkHours
            }
   where
     -- Since I don't work from 6-2, I adjust real expectations to compute as
@@ -364,19 +371,18 @@ calculateBudget now activeTimelog =
     remaining  = Budget.sumRange future
     totalWork  = expected + remaining
 
-    (active', future') =
-        Budget.divideIntervals diffZonedTime (*) now' workIntsDiffTime
+    (active', future') = Budget.divideIntervals now' workIntsDiffTime
 
     expected'  = Budget.sumRange active'
 
     (loggedIn, logbook) = parseLogbook now activeTimelog
-    logbookHours = map (Budget.boundsToValue diffZonedTime) logbook
+    logbookHours = map Budget.boundsToValue logbook
 
     completed  = Budget.sumRange logbookHours
     hoursLeft  = fromHours totalWork - completed
 
     thisBeg    = mkZonedTime (zonedTimeZone now) yr mon day 0 0
-    (_, today) = Budget.divideIntervals diffZonedTime (*) thisBeg logbookHours
+    (_, today) = Budget.divideIntervals thisBeg logbookHours
     thisDone   = Budget.sumRange today
     thisExp    = (hoursLeft + thisDone) / fromIntegral (length future')
 
