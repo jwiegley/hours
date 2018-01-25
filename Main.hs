@@ -384,7 +384,10 @@ calculateBudget now activeTimelog =
     thisBeg    = mkZonedTime (zonedTimeZone now) yr mon day 0 0
     (_, today) = Budget.divideIntervals thisBeg logbookHours
     thisDone   = Budget.sumRange today
-    thisExp    = (hoursLeft + thisDone) / fromIntegral (length future')
+    thisExp    =
+        if loggedIn
+        then (hoursLeft + thisDone) / fromIntegral (length future')
+        else hoursLeft / fromIntegral (length future)
 
 doMain :: Options -> IO ()
 doMain opts = do
