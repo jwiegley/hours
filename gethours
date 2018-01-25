@@ -1,9 +1,9 @@
-#!/bin/bash
+#!/bin/bash -e
 
-org2tc /Users/johnw/doc/Tasks/todo.txt "$@" \
-    | ledger -f - --day-break print \@BAE > /tmp/BAE.dat
-# org2tc /Users/johnw/doc/Tasks/BAE.txt \
-#     | ledger -f - --day-break print >> /tmp/BAE.dat
+org2tc ~/Documents/tasks/BAE.txt "$@" \
+    | ledger -f - --day-break print > /tmp/BAE.dat
+org2tc ~/Documents/tasks/archive/BAE.txt "$@" \
+    | ledger -f - --day-break print >> /tmp/BAE.dat
 
 echo
 echo Daily totals
@@ -12,19 +12,19 @@ echo ===========================================================================
 ledger -f /tmp/BAE.dat                          \
     --columns=80 --day-break --daily            \
     --base --total='(1.00 hrs*amount)/3600'     \
-    --sort date reg
+    --sort date --collapse reg
 
 echo
-echo Daily totals
+echo Daily breakdown
 echo ================================================================================
 
 ledger -f /tmp/BAE.dat                          \
-    --columns=80 --day-break --daily --collapse \
+    --columns=80 --day-break --daily            \
     --base --total='(1.00 hrs*amount)/3600'     \
     --sort date reg
 
 echo
-echo Weekly total
+echo Weekly totals
 echo ================================================================================
 
 ledger -f /tmp/BAE.dat --weekly                 \
@@ -34,4 +34,10 @@ ledger -f /tmp/BAE.dat --weekly                 \
 
 echo
 
-exit 0
+echo Allocations
+echo ================================================================================
+
+ledger -f /tmp/BAE.dat bal --base --percent --depth=1
+echo
+
+ledger -f /tmp/BAE.dat bal --base --percent --depth=2 55AJK

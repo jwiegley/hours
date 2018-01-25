@@ -49,8 +49,11 @@ boundsToValue i = Interval { begin = begin i
                            , value = delta (end i) (begin i)
                            }
 
-sumRange :: (Foldable f, Foldable g) => Num a => f (g a) -> a
-sumRange = getSum . foldMap (foldMap Sum)
+mapValues :: (Functor f, Functor g) => (a -> b) -> f (g a) -> f (g b)
+mapValues f = fmap (fmap f)
+
+sumValues :: (Foldable f, Foldable g) => Num a => f (g a) -> a
+sumValues = getSum . foldMap (foldMap Sum)
 
 distance :: (Foldable f, HasDelta t u, Num u) => f (Interval t a) -> u
 distance = getSum . foldMapBounds (\b e -> Sum (delta b e))

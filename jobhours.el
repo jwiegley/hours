@@ -43,14 +43,16 @@ Note that the 'org2tc' utility must be on your PATH."
     (apply 'color-rgb-to-hex
            (color-hsl-to-rgb h (* s (min 1 cloudiness)) l))))
 
-(defun jobhours-make-text-properties (logged-in disc &optional color)
+(defun jobhours-make-text-properties (logged-in disc dir &optional color)
   (list :background (or color
                         (jobhours-dim-color (if (< disc 0)
                                                 "#ffff00000000"
                                               "#0000ffff0000")
                                             (/ (abs disc) 8.0)))
         :foreground (if logged-in
-                        "yellow"
+                        (if (< dir 0)
+                            "#0000ffffffff"
+                          "yellow")
                       "#000000000000")
         :weight (if logged-in 'bold 'light)))
 
@@ -61,40 +63,44 @@ Note that the 'org2tc' utility must be on your PATH."
 
     (goto-char (point-min))
     (let* ((details (read (current-buffer)))
-           (logged-in           (alist-get 'logged-in details))
-           (this-sym            (alist-get 'this-sym details))
-           (real-pace-mark      (alist-get 'real-pace-mark details))
-           (real-discrepancy    (alist-get 'real-discrepancy details))
-           (real-this-expected  (alist-get 'real-this-expected details))
-           (real-this-remaining (alist-get 'real-this-remaining details)))
+           (logged-in            (alist-get 'logged-in details))
+           (this-sym             (alist-get 'this-sym details))
+           (ideal-total          (alist-get 'ideal-total details))
+           (real-completed       (alist-get 'real-completed details))
+           (real-expected        (alist-get 'real-expected details))
+           (real-expected-inact  (alist-get 'real-expected-inact details))
+           (real-this-remaining  (alist-get 'real-this-remaining details))
+           (real-discrepancy     (alist-get 'real-discrepancy details)))
 
       (delete-region (point-min) (point-max))
-      (insert "  " (format "%.1fh %s %.1f"
-                           real-this-remaining
+      (insert "  " (format "%s%.1fh %s %.1f"
+                           (if (< real-this-remaining 0) "+" "")
+                           (abs real-this-remaining)
                            (pcase this-sym
-                             (`holiday     "H")
+                             (`holiday     "?")
                              (`off-friday  "!")
                              (`half-friday "/")
                              (`regular-day "|")
-                             (`not-working "-"))
-                           real-this-expected) "  ")
+                             (`not-working "="))
+                           (min real-expected real-expected-inact)) "  ")
 
       ;; Color the whole "time bar" a neutral, light grey
       (add-face-text-property
        (point-min) (point-max)
-       (jobhours-make-text-properties logged-in real-discrepancy "grey75"))
+       (jobhours-make-text-properties logged-in real-discrepancy
+                                      real-this-remaining "grey75"))
 
       ;; Now darken a percentage of the bar, starting from the left, to show
       ;; what percentage of the time period has been worked.
       (add-face-text-property
-       (- (point-max)
-          (floor (* (point-max) (/ real-pace-mark 100.0))))
+       (- (point-max) (floor (* (point-max) (/ real-completed ideal-total))))
        (point-max)
 
        ;; If our moving average is above or below nominal, shade the darker
        ;; area toward green or red. The further from nominal, the more intense
        ;; the color becomes, reaching full intensity at 1 work day.
-       (jobhours-make-text-properties logged-in real-discrepancy))
+       (jobhours-make-text-properties logged-in real-discrepancy
+                                      real-this-remaining))
 
       (buffer-string))))
 
