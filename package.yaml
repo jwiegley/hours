@@ -1,0 +1,30 @@
+name:       hours
+version:    3.0.0
+synopsis:   Tool to print out hours worked toward a goal
+author:     John Wiegley
+maintainer: johnw@newartisans.com
+github:     jwiegley/hours
+category:   System
+license:    MIT
+
+dependencies:
+  - base                 >= 4 && < 5
+  - optparse-applicative >= 0.5.2.1
+  - process
+  - reflection
+  - tagged
+  - these                >= 0.7.4
+  - time                 >= 1.4
+  - time-recurrence      >= 0.9.1
+
+executables:
+  hours:
+    main: Main.hs
+    ghc-options: -Wall
+    other-modules:
+      - BAE
+      - Budget
+      - Calc
+      - Time
+      - Timelog
+      - Variant
