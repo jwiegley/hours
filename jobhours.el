@@ -58,14 +58,13 @@ Note that the 'org2tc' utility must be on your PATH."
 
 (defun get-jobhours-string ()
   (with-temp-buffer
-    (call-process "hours" nil t nil
+    (call-process "jobhours" nil t nil
                   "--file" (expand-file-name jobhours-file) "--emacs")
 
     (goto-char (point-min))
     (let* ((details (read (current-buffer)))
            (logged-in            (alist-get 'logged-in details))
-           (this-sym             (alist-get 'this-sym details))
-           (there-sym            (alist-get 'there-sym details))
+           (current-period       (alist-get 'current-period details))
            (ideal-total          (alist-get 'ideal-total details))
            (real-completed       (alist-get 'real-completed details))
            (real-expected        (alist-get 'real-expected details))
@@ -77,14 +76,12 @@ Note that the 'org2tc' utility must be on your PATH."
       (insert "  " (format "%s%.1fh %s %.1f"
                            (if (< real-this-remaining 0) "+" "")
                            (abs real-this-remaining)
-                           (pcase (cons this-sym there-sym)
-                             (`(Holiday    . ,_)         "?")
-                             (`(OffFriday  . ,_)         "!")
-                             (`(HalfFriday . ,_)         "/")
-                             (`(RegularDay . NotWorking) ":")
-                             (`(RegularDay . ,_)         "|")
-                             (`(NotWorking . RegularDay) "=")
-                             (`(NotWorking . ,_)         "∙"))
+                           (pcase this-sym
+                             (`Holiday    "?")
+                             (`OffFriday  "!")
+                             (`HalfFriday "/")
+                             (`RegularDay "|")
+                             (`NotWorking "∙"))
                            (min real-expected real-expected-inact)) "  ")
 
       ;; Color the whole "time bar" a neutral, light grey

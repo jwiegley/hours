@@ -1,56 +1,43 @@
 module Main where
 
-import qualified BAE
-import qualified Calc
 import           Data.Semigroup (Semigroup((<>)))
 import           Data.Time (defaultTimeLocale)
 import           Data.Time.Clock (getCurrentTime)
 import           Data.Time.Format (formatTime)
 import           Data.Time.LocalTime
+import           Hours.Budget (mapValues)
+import qualified Hours.Calc as Calc
+import           Hours.Input (IntervalFile(..))
+import qualified Hours.Input as Input
+import           Hours.Time
 import           Options.Applicative
 import           System.Process (readProcessWithExitCode)
-import           Time
-import qualified Timelog
 
 data Options = Options
-    { file  :: String
+    { ideal :: FilePath
+    , real  :: FilePath
     , emacs :: Bool
     }
 
 options :: Parser Options
 options = Options
-    <$> strOption (long "file"  <> help "Active timelog file to use")
+    <$> strOption (long "ideal" <> help "YAML file containing ideal intervals")
+    <*> strOption (long "real"  <> help "YAML file containing real intervals")
     <*> switch    (long "emacs" <> help "Emit statistics in Emacs Lisp form")
 
 main :: IO ()
 main = do
-    opts <- execParser optsDef
+    opts   <- execParser optsDef
+    now    <- getZonedTime
+    ideals <- Input.readFile (ideal opts)
+    reals  <- Input.readFile (real opts)
 
-    now <- utcToZonedTime <$> getCurrentTimeZone <*> getCurrentTime
-
-    let (beg, end) = BAE.baeTwoWeekRange now
+    let (beg, end) = (start ideals, finish ideals)
         base       = setHour 0 now
-        fmtTime    = formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S"
 
-    (_, activeTimelog, _) <-
-        readProcessWithExitCode "org2tc"
-            [file opts, "-s", fmtTime beg, "-e", fmtTime end] ""
-
-    let idealHere  = BAE.workIntervals True  beg end
-        idealThere = BAE.workIntervals False beg end
-
-        (loggedIn, logHours) = Timelog.parseLogbook now activeTimelog
-
-        -- Since I don't work 6-2 PST, I adjust real expectations to compute
-        -- as if I were situated at the BAE office and working from there.
-        -- This better models an ordinary 9-5 workday.
-        nowThere = setTimeZone BAE.timeZoneBAE now'
-          where
-            secsAway = diffTimeZone BAE.timeZoneBAE (zonedTimeZone now)
-            now'     = addZonedTime (- secsAway) now
-
-    print $ Calc.calculateBudget beg end now base nowThere loggedIn
-        idealHere idealThere BAE.NotWorking logHours
+    print $ Calc.calculateBudget beg end now base (nowThere ideals)
+        (loggedIn reals) (intervals ideals) Input.NotWorking
+        (mapValues snd (intervals reals))
   where
     optsDef = info (helper <*> options)
         (fullDesc <> progDesc "Show hours worked so far"

@@ -1,12 +1,12 @@
 {-# LANGUAGE LambdaCase #-}
 
-module Variant where
+module Hours.Variant where
 
 import Data.Time.Clock (NominalDiffTime)
 import Data.Time.Clock.POSIX (utcTimeToPOSIXSeconds)
 import Data.Time.LocalTime (ZonedTime, zonedTimeToUTC)
 import Text.Printf (printf)
-import Time
+import Hours.Time
 
 data Variant a
     = BoolVal Bool

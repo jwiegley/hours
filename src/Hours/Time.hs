@@ -5,9 +5,8 @@
 
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Time where
+module Hours.Time where
 
-import qualified Budget
 import           Data.Proxy (Proxy(..))
 import           Data.Reflection (Reifies(..))
 import           Data.Tagged (Tagged(..))
@@ -17,6 +16,7 @@ import           Data.Time.Clock (NominalDiffTime, diffUTCTime, addUTCTime)
 import           Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 import           Data.Time.LocalTime
 import           Data.Time.Moment (Moment(..))
+import qualified Hours.Budget as Budget
 
 instance Eq ZonedTime where
     x == y = zonedTimeToUTC x == zonedTimeToUTC y

@@ -8,23 +8,46 @@ category:   System
 license:    MIT
 
 dependencies:
+  - aeson
   - base                 >= 4 && < 5
+  - bytestring
   - optparse-applicative >= 0.5.2.1
   - process
   - reflection
   - tagged
   - these                >= 0.7.4
+  - text
   - time                 >= 1.4
   - time-recurrence      >= 0.9.1
+  - yaml
+
+library:
+  source-dirs: src
+  exposed-modules:
+    - Hours.Budget
+    - Hours.Calc
+    - Hours.Input
+    - Hours.Time
+    - Hours.Variant
 
 executables:
-  hours:
+  process-hours:
     main: Main.hs
-    ghc-options: -Wall
+    dependencies:
+      - hours
+
+  bae-periods:
+    source-dirs: bae
+    main: Main.hs
     other-modules:
       - BAE
-      - Budget
-      - Calc
-      - Time
+    dependencies:
+      - hours
+
+  timelog-periods:
+    source-dirs: timelog
+    main: Main.hs
+    other-modules:
       - Timelog
-      - Variant
+    dependencies:
+      - hours

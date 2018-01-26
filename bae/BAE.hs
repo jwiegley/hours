@@ -1,8 +1,8 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module BAE where
 
-import Budget (Interval(..))
 import Data.Proxy (Proxy(..))
 import Data.Reflection (reify)
 import Data.Tagged (Tagged(..))
@@ -10,7 +10,9 @@ import Data.Time (NominalDiffTime)
 import Data.Time.Calendar.WeekDate (toWeekDate)
 import Data.Time.LocalTime
 import Data.Time.Recurrence as R
-import Time
+import Hours.Budget (Interval(..))
+import Hours.Input (WorkDay(..))
+import Hours.Time
 
 timeZoneBAE :: TimeZone
 timeZoneBAE = TimeZone (-300) False "EST"
@@ -19,15 +21,6 @@ holidayTable :: [ZonedTime]
 holidayTable =
     [ mkZonedTime timeZoneBAE 2018 1 1 9 0
     ]
-
-data WorkDay
-    = NotWorking
-    | Holiday
-    | Weekend
-    | OffFriday
-    | HalfFriday
-    | RegularDay
-    deriving (Eq, Show)
 
 workHours :: Bool -> WorkDay -> NominalDiffTime
 workHours _     NotWorking = 0

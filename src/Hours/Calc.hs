@@ -3,15 +3,15 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Calc where
+module Hours.Calc where
 
 -- import Debug.Trace
 
-import qualified Budget
-import           Budget (Interval(..))
 import           Data.Time.Clock (NominalDiffTime)
 import           Data.Time.LocalTime
-import           Variant
+import qualified Hours.Budget as Budget
+import           Hours.Budget (Interval(..))
+import           Hours.Variant
 
 data Budget t u a = Budget
     { bStart                 :: t
@@ -31,9 +31,8 @@ data Budget t u a = Budget
     , bRealThisCompleted     :: u
     , bRealThisRemaining     :: u
     , bRealDiscrepancy       :: u
+    , bCurrentPeriod         :: a
     , bLoggedIn              :: Bool
-    , bThisSym               :: a
-    , bThereSym              :: a
     }
 
 instance (t ~ ZonedTime, u ~ NominalDiffTime, Show a) =>
@@ -56,15 +55,13 @@ instance (t ~ ZonedTime, u ~ NominalDiffTime, Show a) =>
     , "(real-this-completed   . ", v (DiffTimeVal  bRealThisCompleted),    ")\n"
     , "(real-this-remaining   . ", v (DiffTimeVal  bRealThisRemaining),    ")\n"
     , "(real-discrepancy      . ", v (DiffTimeVal  bRealDiscrepancy),      ")\n"
+    , "(current-period        . ", v (OtherVal     bCurrentPeriod),        ")\n"
     , "(logged-in             . ", v (BoolVal      bLoggedIn),             ")\n"
-    , "(this-sym              . ", v (OtherVal     bThisSym),              ")\n"
-    , "(there-sym             . ", v (OtherVal     bThereSym),             ")\n"
     , ")\n"
     ]
 
 calculateBudget :: (Functor f, Foldable f,
                    Functor g, Foldable g,
-                   Functor h, Foldable h,
                    Ord t,
                    Fractional u,
                    Budget.HasDelta t u,
@@ -76,17 +73,15 @@ calculateBudget :: (Functor f, Foldable f,
                 -> t
                 -> Bool
                 -> f (Interval t (a, u))
-                -> g (Interval t (a, u))
                 -> a
-                -> h (Interval t u)
+                -> g (Interval t u)
                 -> Budget t u a
-calculateBudget beg end now base now' loggedIn idealHere idealThere def real =
+calculateBudget beg end now base now' loggedIn ideal def real =
     Budget {..}
   where
     bStart                = beg
     bEnd                  = end
     bNow                  = now
-    bLoggedIn             = loggedIn
     bIdealTotal           = bIdealExpected + bIdealRemaining
     bIdealExpected        = Budget.sumValues active
     bIdealRemaining       = Budget.sumValues future
@@ -104,16 +99,14 @@ calculateBudget beg end now base now' loggedIn idealHere idealThere def real =
     bRealThisCompleted    = Budget.sumValues today
     bRealThisRemaining    = activeExpectation - bRealThisCompleted
     bRealDiscrepancy      = bRealCompleted - bIdealExpectedExact
-    bThisSym              = maybe def Budget.value current
-    bThereSym             = maybe def Budget.value
-                                (Budget.current bNow idealThereFst)
+    bCurrentPeriod        = maybe def Budget.value current
+    bLoggedIn             = loggedIn
 
-    idealHereFst          = Budget.mapValues fst idealHere
-    idealHereSnd          = Budget.mapValues snd idealHere
-    idealThereFst         = Budget.mapValues fst idealThere
-    current               = Budget.current now' idealHereFst
-    (active, future)      = Budget.activeIntervals now' idealHereSnd
-    (active', future')    = Budget.divideIntervals now' idealHereSnd
+    idealFst              = Budget.mapValues fst ideal
+    idealSnd              = Budget.mapValues snd ideal
+    current               = Budget.current now' idealFst
+    (active, future)      = Budget.activeIntervals now' idealSnd
+    (active', future')    = Budget.divideIntervals now' idealSnd
     (_, today)            = Budget.divideIntervals base real
 
     activeExpectation

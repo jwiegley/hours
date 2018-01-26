@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: bc44feeecc59f8169e081cdaf74fd4eaf15373dcb42c4c6502965f0c9387c391
+-- hash: 2b00ce70d6b0a73fab56706a3e2bfbf7060d1a03f864485c6aa224058228a082
 
 name:           hours
 version:        3.0.0
@@ -11,7 +11,7 @@ category:       System
 homepage:       https://github.com/jwiegley/hours#readme
 bug-reports:    https://github.com/jwiegley/hours/issues
 author:         John Wiegley
-maintainer:     john.wiegley@baesystems.com
+maintainer:     johnw@newartisans.com
 license:        MIT
 license-file:   LICENSE
 build-type:     Simple
@@ -21,23 +21,92 @@ source-repository head
   type: git
   location: https://github.com/jwiegley/hours
 
-executable hours
-  main-is: Main.hs
+library
+  exposed-modules:
+      Hours.Budget
+      Hours.Calc
+      Hours.Input
+      Hours.Time
+      Hours.Variant
   other-modules:
-      BAE
-      Budget
-      Calc
-      Time
-      Timelog
-      Variant
-  ghc-options: -Wall
+      Paths_hours
+  hs-source-dirs:
+      src
   build-depends:
-      base >=4 && <5
+      aeson
+    , base >=4 && <5
+    , bytestring
     , optparse-applicative >=0.5.2.1
     , process
     , reflection
     , tagged
+    , text
     , these >=0.7.4
     , time >=1.4
     , time-recurrence >=0.9.1
+    , yaml
+  default-language: Haskell2010
+
+executable bae-periods
+  main-is: Main.hs
+  other-modules:
+      BAE
+  hs-source-dirs:
+      bae
+  build-depends:
+      aeson
+    , base >=4 && <5
+    , bytestring
+    , hours
+    , optparse-applicative >=0.5.2.1
+    , process
+    , reflection
+    , tagged
+    , text
+    , these >=0.7.4
+    , time >=1.4
+    , time-recurrence >=0.9.1
+    , yaml
+  default-language: Haskell2010
+
+executable process-hours
+  main-is: Main.hs
+  other-modules:
+      Paths_hours
+  build-depends:
+      aeson
+    , base >=4 && <5
+    , bytestring
+    , hours
+    , optparse-applicative >=0.5.2.1
+    , process
+    , reflection
+    , tagged
+    , text
+    , these >=0.7.4
+    , time >=1.4
+    , time-recurrence >=0.9.1
+    , yaml
+  default-language: Haskell2010
+
+executable timelog-periods
+  main-is: Main.hs
+  other-modules:
+      Timelog
+  hs-source-dirs:
+      timelog
+  build-depends:
+      aeson
+    , base >=4 && <5
+    , bytestring
+    , hours
+    , optparse-applicative >=0.5.2.1
+    , process
+    , reflection
+    , tagged
+    , text
+    , these >=0.7.4
+    , time >=1.4
+    , time-recurrence >=0.9.1
+    , yaml
   default-language: Haskell2010

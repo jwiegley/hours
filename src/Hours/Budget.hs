@@ -7,7 +7,7 @@
 
 {-# OPTIONS_GHC -Wall #-}
 
-module Budget where
+module Hours.Budget where
 
 import Data.Foldable (Foldable(toList))
 import Data.Semigroup (Semigroup((<>)), Sum(Sum, getSum))

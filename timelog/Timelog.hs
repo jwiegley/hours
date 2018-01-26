@@ -2,7 +2,6 @@
 
 module Timelog where
 
-import Budget (Interval(..))
 import Data.Char (toLower)
 import Data.Foldable (Foldable(foldl'))
 import Data.List (sortOn)
@@ -12,7 +11,8 @@ import Data.Time (defaultTimeLocale)
 import Data.Time.Clock (NominalDiffTime)
 import Data.Time.Format (parseTimeM)
 import Data.Time.LocalTime
-import Time
+import Hours.Budget (Interval(..))
+import Hours.Time
 
 parseTimeClockEntry :: TimeZone -> String -> (Bool, ZonedTime)
 parseTimeClockEntry zone s = case words s of
@@ -27,7 +27,7 @@ parseTimeClockEntry zone s = case words s of
 
 parseLogbook :: ZonedTime -> String
              -> (Bool, [Interval ZonedTime NominalDiffTime])
-parseLogbook now s = (isJust st, sortOn Budget.begin ints')
+parseLogbook now s = (isJust st, sortOn begin ints')
   where
     (st, ints) = foldl' go (Nothing, []) entries
 

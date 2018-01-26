@@ -1,2 +1,31 @@
-#!/bin/bash
-exec hours --file ~/Documents/tasks/BAE.txt "$@"
+#!/bin/bash -e
+
+if [[ -d ./org2tc ]]; then
+    export PATH=$PWD/org2tc:$PATH
+fi
+
+if [[ -d ./dist/build/process-hours ]]; then
+    export PATH=$PWD/dist/build/process-hours:$PATH
+fi
+
+if [[ -d ./dist/build/bae-periods ]]; then
+    export PATH=$PWD/dist/build/bae-periods:$PATH
+fi
+
+if [[ -d ./dist/build/timelog-periods ]]; then
+    export PATH=$PWD/dist/build/timelog-periods:$PATH
+fi
+
+START=$(bae-periods | grep ^start | cut -c8-)
+FINISH=$(bae-periods | grep ^finish | cut -c9-)
+
+function parseorg() {
+    ORG_START=$(echo "$1" | cut -c-19)
+    ORG_END=$(echo "$2" | cut -c-19)
+
+    org2tc -s "$ORG_START" -e "$ORG_END" "$3"                   \
+        | timelog-periods --begin "$1" --end "$2" --file -
+}
+
+process-hours --ideal <(bae-periods)                            \
+              --real  <(parseorg "$START" "$FINISH" "$1")
