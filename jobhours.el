@@ -86,7 +86,10 @@ Note that the 'org2tc' utility must be on your PATH."
                            (min real-expected real-expected-inact)) "  ")
 
       ;; Color the whole "time bar" a neutral, light grey
-      (add-face-text-property (point-min) (point-max) '(:background "grey75"))
+      (add-face-text-property
+       (point-min) (point-max)
+       (jobhours-make-text-properties logged-in real-discrepancy
+                                      real-this-remaining "grey75"))
 
       ;; Now darken a percentage of the bar, starting from the left, to show
       ;; what percentage of the time period has been worked.
