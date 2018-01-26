@@ -75,7 +75,7 @@ Note that the 'org2tc' utility must be on your PATH."
       (insert "  " (format "%s%.1fh %s %.1f"
                            (if (< real-this-remaining 0) "+" "")
                            (abs real-this-remaining)
-                           (pcase this-sym
+                           (pcase current-period
                              (`Holiday    "?")
                              (`OffFriday  "!")
                              (`HalfFriday "/")
@@ -84,15 +84,14 @@ Note that the 'org2tc' utility must be on your PATH."
                            (min real-expected real-expected-inact)) "  ")
 
       ;; Color the whole "time bar" a neutral, light grey
-      (add-face-text-property
-       (point-min) (point-max)
-       (jobhours-make-text-properties logged-in real-discrepancy
-                                      real-this-remaining "grey75"))
+      (add-face-text-property (point-min) (point-max) '(:background "grey75"))
 
       ;; Now darken a percentage of the bar, starting from the left, to show
       ;; what percentage of the time period has been worked.
       (add-face-text-property
-       (- (point-max) (floor (* (point-max) (/ real-completed ideal-total))))
+       (max 1
+            (- (point-max) (floor (* (point-max)
+                                     (/ real-completed ideal-total)))))
        (point-max)
 
        ;; If our moving average is above or below nominal, shade the darker
