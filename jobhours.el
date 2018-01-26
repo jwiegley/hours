@@ -58,8 +58,7 @@ Note that the 'org2tc' utility must be on your PATH."
 
 (defun get-jobhours-string ()
   (with-temp-buffer
-    (call-process "jobhours" nil t nil
-                  "--file" (expand-file-name jobhours-file) "--emacs")
+    (call-process "jobhours" nil t nil (expand-file-name jobhours-file))
 
     (goto-char (point-min))
     (let* ((details (read (current-buffer)))
