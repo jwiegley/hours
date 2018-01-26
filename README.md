@@ -43,13 +43,13 @@ looks something like this:
     6.2h | 8.4
 
 This means that I have 6.2 hours left to work today to "stay on track", and
-that my current progress will requires me to work 8.4 hours every interval
+that my current progress will require me to work 8.4 hours every interval
 (usually a work day) for the remaining intervals of this work period. The
-upright bar means that I'm currently in a "work day", and then color of the
-display indicates whether I'm falling behind (starts becoming red), or getting
-ahead (starts becoming green).
+upright bar means I'm currently in a "work day", and the color of the display
+indicates whether I'm falling behind (starts becoming red), or getting ahead
+(starts becoming green).
 
-This way, with a moment's glance, I know these things:
+This way, within a moment's glance, I know the following details:
 
   1. How much I should work today before kicking off.
   2. Whether I'm on track towards the end of the period.
