@@ -48,7 +48,7 @@ Note that the 'org2tc' utility must be on your PATH."
                         (jobhours-dim-color (if (< disc 0)
                                                 "#ffff00000000"
                                               "#0000ffff0000")
-                                            (/ (abs disc) 8.0)))
+                                            (abs disc)))
         :foreground (if logged-in
                         (if (< dir 0)
                             "#0000ffffffff"
