@@ -52,16 +52,15 @@ instance Show Budget where
     , "(real-this-remaining . ",   v (DiffTimeVal bRealThisRemaining), ")\n"
     , "(real-discrepancy . ",      v (DiffTimeVal discrepancy), ")\n"
     , "(logged-in . ",             v (BoolVal bLoggedIn), ")\n"
-
-    , "(this-sym . ",
-      v (OtherVal (fromMaybe BAE.NotWorking bThisSym)), ")\n"
-    , "(there-sym . ",
-      v (OtherVal (fromMaybe BAE.NotWorking bThereSym)), ")\n"
+    , "(this-sym . ",              v (OtherVal thisSym), ")\n"
+    , "(there-sym . ",             v (OtherVal thereSym), ")\n"
     , ")\n"
     ]
    where
      discrepancy = bRealCompleted - bIdealExpectedExact
      idealTotal  = bIdealExpected + bIdealRemaining
+     thisSym     = fromMaybe BAE.NotWorking bThisSym
+     thereSym    = fromMaybe BAE.NotWorking bThereSym
 
 calculateBudget :: ZonedTime -> String -> Budget
 calculateBudget now activeTimelog =
