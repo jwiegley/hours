@@ -65,6 +65,7 @@ Note that the 'org2tc' utility must be on your PATH."
     (let* ((details (read (current-buffer)))
            (logged-in            (alist-get 'logged-in details))
            (this-sym             (alist-get 'this-sym details))
+           (there-sym            (alist-get 'there-sym details))
            (ideal-total          (alist-get 'ideal-total details))
            (real-completed       (alist-get 'real-completed details))
            (real-expected        (alist-get 'real-expected details))
@@ -76,12 +77,14 @@ Note that the 'org2tc' utility must be on your PATH."
       (insert "  " (format "%s%.1fh %s %.1f"
                            (if (< real-this-remaining 0) "+" "")
                            (abs real-this-remaining)
-                           (pcase this-sym
-                             (`holiday     "?")
-                             (`off-friday  "!")
-                             (`half-friday "/")
-                             (`regular-day "|")
-                             (`not-working "="))
+                           (pcase (cons this-sym there-sym)
+                             (`(Holiday    . ,_)         "?")
+                             (`(OffFriday  . ,_)         "!")
+                             (`(HalfFriday . ,_)         "/")
+                             (`(RegularDay . NotWorking) ":")
+                             (`(RegularDay . ,_)         "|")
+                             (`(NotWorking . RegularDay) "=")
+                             (`(NotWorking . ,_)         "∙"))
                            (min real-expected real-expected-inact)) "  ")
 
       ;; Color the whole "time bar" a neutral, light grey

@@ -17,8 +17,8 @@ data Options = Options
 
 options :: Parser Options
 options = Options
-    <$> strOption (long "file" <> help "Active timelog file to use")
-    <*> switch (long "emacs" <> help "Emit statistics in Emacs Lisp form")
+    <$> strOption (long "file"  <> help "Active timelog file to use")
+    <*> switch    (long "emacs" <> help "Emit statistics in Emacs Lisp form")
 
 main :: IO ()
 main = do
@@ -35,8 +35,7 @@ main = do
     print $ Calc.calculateBudget now activeTimelog
   where
     optsDef = info (helper <*> options)
-                   (fullDesc
-                    <> progDesc "Show hours worked so far"
-                    <> header "hours - show hours worked so far")
+        (fullDesc <> progDesc "Show hours worked so far"
+                  <> header "hours - show hours worked so far")
 
 -- Main.hs (hours) ends here

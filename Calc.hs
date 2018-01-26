@@ -30,6 +30,7 @@ data Budget = Budget
     , bRealThisRemaining     :: NominalDiffTime
     , bLoggedIn              :: Bool
     , bThisSym               :: Maybe BAE.WorkHours
+    , bThereSym              :: Maybe BAE.WorkHours
     }
 
 instance Show Budget where
@@ -51,7 +52,12 @@ instance Show Budget where
     , "(real-this-remaining . ",   v (DiffTimeVal bRealThisRemaining), ")\n"
     , "(real-discrepancy . ",      v (DiffTimeVal discrepancy), ")\n"
     , "(logged-in . ",             v (BoolVal bLoggedIn), ")\n"
-    , "(this-sym . ",              v (OtherVal (fromMaybe BAE.NotWorking bThisSym)), "))\n"
+
+    , "(this-sym . ",
+      v (OtherVal (fromMaybe BAE.NotWorking bThisSym)), ")\n"
+    , "(there-sym . ",
+      v (OtherVal (fromMaybe BAE.NotWorking bThereSym)), ")\n"
+    , ")\n"
     ]
    where
      discrepancy = bRealCompleted - bIdealExpectedExact
@@ -84,41 +90,52 @@ calculateBudget now activeTimelog =
     bIdealDaysLeft        = length future
     bIdealDaysLeftIncl    = length future' + maybe 1 (const 0) current
     bRealCompleted        = Budget.sumValues logHours
-    bRealExpectedInact    = if null future
-                            then hoursLeft
-                            else hoursLeft / fromIntegral (length future)
-    bRealExpected         = if bLoggedIn
-                            then activeExp
-                            else bRealExpectedInact
+    bRealExpectedInact
+        | null future = hoursLeft
+        | otherwise   = hoursLeft / fromIntegral (length future)
+    bRealExpected
+        | bLoggedIn = activeExp
+        | otherwise = bRealExpectedInact
 
     bRealThisCompleted    = Budget.sumValues today
     bRealThisRemaining    = activeExp - bRealThisCompleted
     bThisSym              = Budget.value <$> current
 
-    useMyNotionOfWorkTime = True -- Instead of BAE's work schedule using
-                                 -- off-Fridays, I use a normal work pattern
-                                 -- based on not taking off those Fridays.
+    -- Instead of BAE's work schedule using off-Fridays, I use a normal work
+    -- pattern based on not taking off those Fridays.
+    useMyNotionOfWorkTime = True
+
+    workIntsWorkHours     = BAE.workIntervals useMyNotionOfWorkTime bStart bEnd
+    workIntsDiffTime      = Budget.mapValues fromHours workIntsHours
+    workIntsHours         = Budget.mapValues hoursToInt workIntsWorkHours
+      where
+        hoursToInt = BAE.workHoursToInt useMyNotionOfWorkTime
+
+    (bLoggedIn, logHours) = Timelog.parseLogbook bNow activeTimelog
 
     -- Since I don't work 6-2 PST, I adjust real expectations to compute as if
     -- I were situated at the BAE office and working from there. This better
     -- models an ordinary 9-5 workday.
-    secsAway              = diffTimeZone BAE.timeZoneBAE (zonedTimeZone bNow)
-
-    now'                  = addZonedTime (- secsAway) bNow
     nowBAE                = setTimeZone BAE.timeZoneBAE now'
-    hoursToInt            = BAE.workHoursToInt useMyNotionOfWorkTime
-    workIntsWorkHours     = BAE.workIntervals useMyNotionOfWorkTime bStart bEnd
-    workIntsHours         = Budget.mapValues hoursToInt workIntsWorkHours
-    workIntsDiffTime      = Budget.mapValues fromHours workIntsHours
+      where
+        secsAway = diffTimeZone BAE.timeZoneBAE (zonedTimeZone bNow)
+        now'     = addZonedTime (- secsAway) bNow
+
     (active, future)      = Budget.activeIntervals nowBAE workIntsHours
     current               = Budget.current nowBAE workIntsWorkHours
-    totalWork             = bIdealExpected + bIdealRemaining
     (active', future')    = Budget.divideIntervals nowBAE workIntsDiffTime
-    (bLoggedIn, logHours) = Timelog.parseLogbook bNow activeTimelog
+
+    bThereSym             = Budget.value <$> Budget.current bNow workIntsThere
+      where
+        workIntsThere = BAE.workIntervals False bStart bEnd
+
+    (_, today)            = Budget.divideIntervals (setHour 0 bNow) logHours
+
     hoursLeft             = fromHours totalWork - bRealCompleted
-    thisBeg               = setHour 0 bNow
-    (_, today)            = Budget.divideIntervals thisBeg logHours
-    activeExp             = if bIdealDaysLeftIncl > 0
-                            then (hoursLeft + bRealThisCompleted)
-                                / fromIntegral bIdealDaysLeftIncl
-                            else hoursLeft + bRealThisCompleted
+      where
+        totalWork = bIdealExpected + bIdealRemaining
+
+    activeExp
+        | bIdealDaysLeftIncl > 0 =
+          (hoursLeft + bRealThisCompleted) / fromIntegral bIdealDaysLeftIncl
+        | otherwise = hoursLeft + bRealThisCompleted
