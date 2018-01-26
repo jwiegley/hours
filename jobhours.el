@@ -70,8 +70,12 @@ Note that the 'org2tc' utility must be on your PATH."
            (real-expected         (alist-get 'real-expected details))
            (real-expected-inact   (alist-get 'real-expected-inact details))
            (real-this-remaining   (alist-get 'real-this-remaining details))
-           (real-discrepancy
-            (/ (- real-completed ideal-expected-exact) ideal-total)))
+           (ideal-progress (/ ideal-expected-exact ideal-total))
+           (real-discrepancy (/ (- real-completed ideal-expected-exact)
+                                ideal-total))
+           (properties (apply-partially #'jobhours-make-text-properties
+                                        logged-in real-discrepancy
+                                        real-this-remaining)))
 
       (delete-region (point-min) (point-max))
       (insert "  " (format "%s%.1fh %s %.1f"
@@ -86,24 +90,19 @@ Note that the 'org2tc' utility must be on your PATH."
                            (min real-expected real-expected-inact)) "  ")
 
       ;; Color the whole "time bar" a neutral, light grey
-      (add-face-text-property
-       (point-min) (point-max)
-       (jobhours-make-text-properties logged-in real-discrepancy
-                                      real-this-remaining "grey75"))
+      (add-face-text-property (point-min) (point-max)
+                              (funcall properties "grey75"))
 
       ;; Now darken a percentage of the bar, starting from the left, to show
       ;; what percentage of the time period has been worked.
       (add-face-text-property
-       (max 1
-            (- (point-max) (floor (* (point-max)
-                                     (/ ideal-expected-exact ideal-total)))))
+       (max 1 (- (point-max) (floor (* (point-max) ideal-progress))))
        (point-max)
 
        ;; If our moving average is above or below nominal, shade the darker
        ;; area toward green or red. The further from nominal, the more intense
        ;; the color becomes, reaching full intensity at 1 work day.
-       (jobhours-make-text-properties logged-in real-discrepancy
-                                      real-this-remaining))
+       (funcall properties))
 
       (buffer-string))))
 
