@@ -28,7 +28,6 @@ data Budget t u a = Budget
     , bRealExpectedInact     :: u
     , bRealThisCompleted     :: u
     , bRealThisRemaining     :: u
-    , bRealDiscrepancy       :: u
     , bCurrentPeriod         :: a
     , bLoggedIn              :: Bool
     }
@@ -52,7 +51,6 @@ instance (t ~ UTCTime, u ~ NominalDiffTime, Show a) =>
     , "(real-expected-inact   . ", v (DiffTimeVal  bRealExpectedInact),    ")\n"
     , "(real-this-completed   . ", v (DiffTimeVal  bRealThisCompleted),    ")\n"
     , "(real-this-remaining   . ", v (DiffTimeVal  bRealThisRemaining),    ")\n"
-    , "(real-discrepancy      . ", v (DiffTimeVal  bRealDiscrepancy),      ")\n"
     , "(current-period        . ", v (OtherVal     bCurrentPeriod),        ")\n"
     , "(logged-in             . ", v (BoolVal      bLoggedIn),             ")\n"
     , ")\n"
@@ -111,8 +109,6 @@ calculateBudget beg end now base now' loggedIn ideal def real =
     bRealRemaining        = bIdealTotal - bRealCompleted
     bRealThisCompleted    = Budget.sumValues today
     bRealThisRemaining    = activeExpectation - bRealThisCompleted
-    bRealDiscrepancy      = (bIdealExpectedExact - bRealCompleted)
-                                / bIdealTotal
     bCurrentPeriod        = maybe def Budget.value current
     bLoggedIn             = loggedIn
 

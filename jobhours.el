@@ -62,14 +62,16 @@ Note that the 'org2tc' utility must be on your PATH."
 
     (goto-char (point-min))
     (let* ((details (read (current-buffer)))
-           (logged-in            (alist-get 'logged-in details))
-           (current-period       (alist-get 'current-period details))
-           (ideal-total          (alist-get 'ideal-total details))
-           (real-completed       (alist-get 'real-completed details))
-           (real-expected        (alist-get 'real-expected details))
-           (real-expected-inact  (alist-get 'real-expected-inact details))
-           (real-this-remaining  (alist-get 'real-this-remaining details))
-           (real-discrepancy     (alist-get 'real-discrepancy details)))
+           (logged-in             (alist-get 'logged-in details))
+           (current-period        (alist-get 'current-period details))
+           (ideal-total           (alist-get 'ideal-total details))
+           (ideal-expected-exact  (alist-get 'ideal-expected-exact details))
+           (real-completed        (alist-get 'real-completed details))
+           (real-expected         (alist-get 'real-expected details))
+           (real-expected-inact   (alist-get 'real-expected-inact details))
+           (real-this-remaining   (alist-get 'real-this-remaining details))
+           (real-discrepancy
+            (/ (- real-completed ideal-expected-exact) ideal-total)))
 
       (delete-region (point-min) (point-max))
       (insert "  " (format "%s%.1fh %s %.1f"
@@ -91,7 +93,7 @@ Note that the 'org2tc' utility must be on your PATH."
       (add-face-text-property
        (max 1
             (- (point-max) (floor (* (point-max)
-                                     (/ real-completed ideal-total)))))
+                                     (/ ideal-expected-exact ideal-total)))))
        (point-max)
 
        ;; If our moving average is above or below nominal, shade the darker
