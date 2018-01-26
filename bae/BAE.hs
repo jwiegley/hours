@@ -61,8 +61,10 @@ workIntervals mine moment =
                (_, _, w) = toWeekDate (localDay localTime)
            in case w of
                 5 -> let mid = addHours 4 b in
-                    [ Interval b mid HalfFriday
-                    , Interval mid (addHours 4 mid) HalfFriday ]
+                    if mine
+                    then [Interval b (addHours 8 b) RegularDay]
+                    else [ Interval b mid HalfFriday
+                         , Interval mid (addHours 4 mid) HalfFriday ]
                 _ ->
                     [Interval b (addHours (if mine then 8 else 9) b)
                               RegularDay]
