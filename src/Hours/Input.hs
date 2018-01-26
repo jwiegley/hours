@@ -5,18 +5,15 @@
 
 module Hours.Input where
 
-import Control.Exception
-import Data.Aeson
-import Data.Text (pack, unpack)
-import Data.Time
-import Data.Yaml
-import Hours.Budget (Interval(..))
-
-parseIso :: Monad m => String -> m ZonedTime
-parseIso = parseTimeM True defaultTimeLocale "%Y-%m-%d %H:%M:%S %z"
-
-formatIso :: ZonedTime -> String
-formatIso = formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S %z"
+import           Data.Aeson
+import           Data.ByteString.Lazy (ByteString)
+import           Data.List.NonEmpty (NonEmpty(..))
+import qualified Data.List.NonEmpty as NE
+import           Data.Semigroup (Semigroup(sconcat), Max(..), Min(..))
+import           Data.Text (pack, unpack)
+import           Data.Time.Clock (UTCTime, NominalDiffTime)
+import           Hours.Budget (Interval(..))
+import           Hours.Time
 
 data WorkDay
     = NotWorking
@@ -34,20 +31,20 @@ instance ToJSON WorkDay where
    toJSON x = String (pack (show x))
 
 data IntervalFile = IntervalFile
-    { start        :: ZonedTime
-    , finish       :: ZonedTime
-    , nowThere     :: ZonedTime
+    { start        :: UTCTime
+    , finish       :: UTCTime
+    , nowThere     :: UTCTime
     , loggedIn     :: Bool
-    , intervals    :: [Interval ZonedTime (WorkDay, NominalDiffTime)]
+    , intervals    :: [Interval UTCTime (WorkDay, NominalDiffTime)]
     }
 
-instance FromJSON a => FromJSON (Interval ZonedTime a) where
+instance FromJSON a => FromJSON (Interval UTCTime a) where
     parseJSON = withObject "Interval" $ \v -> Interval
         <$> (parseIso =<< v .: "begin")
         <*> (parseIso =<< v .: "end")
         <*> v .: "value"
 
-instance ToJSON a => ToJSON (Interval ZonedTime a) where
+instance ToJSON a => ToJSON (Interval UTCTime a) where
    toJSON (Interval b e v) =
         object [ "begin" .= formatIso b
                , "end"   .= formatIso e
@@ -57,21 +54,24 @@ instance FromJSON IntervalFile where
     parseJSON = withObject "IntervalFile" $ \v -> IntervalFile
         <$> (parseIso =<< v .: "start")
         <*> (parseIso =<< v .: "finish")
-        <*> (parseIso =<< v .: "nowThere")
-        <*> v .: "loggedIn"
+        <*> (parseIso =<< v .: "now-there")
+        <*> v .: "logged-in"
         <*> v .: "intervals"
 
 instance ToJSON IntervalFile where
    toJSON (IntervalFile b e t l v) =
         object [ "start"        .= formatIso b
                , "finish"       .= formatIso e
-               , "nowThere"     .= formatIso t
-               , "loggedIn"     .= l
+               , "now-there"    .= formatIso t
+               , "logged-in"    .= l
                , "intervals"    .= v ]
 
-readFile :: FilePath -> IO IntervalFile
-readFile path = do
-    eres <- decodeFileEither path
-    case eres of
-        Left err  -> throw err
-        Right res -> return res
+encodeIntervals :: UTCTime
+                -> Bool
+                -> [Interval UTCTime (WorkDay, NominalDiffTime)]
+                -> ByteString
+encodeIntervals _ _ [] = encode (Nothing :: Maybe IntervalFile)
+encodeIntervals moment b xxs@(x:xs) = encode . Just $
+    IntervalFile (getMin (sconcat (NE.map (Min . begin) (x :| xs))))
+                 (getMax (sconcat (NE.map (Max . end)   (x :| xs))))
+                 moment b xxs

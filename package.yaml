@@ -13,13 +13,10 @@ dependencies:
   - bytestring
   - optparse-applicative >= 0.5.2.1
   - process
-  - reflection
-  - tagged
   - these                >= 0.7.4
   - text
   - time                 >= 1.4
   - time-recurrence      >= 0.9.1
-  - yaml
 
 library:
   source-dirs: src

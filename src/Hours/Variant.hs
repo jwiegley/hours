@@ -2,11 +2,10 @@
 
 module Hours.Variant where
 
-import Data.Time.Clock (NominalDiffTime)
+import Data.Time.Clock (UTCTime, NominalDiffTime)
 import Data.Time.Clock.POSIX (utcTimeToPOSIXSeconds)
-import Data.Time.LocalTime (ZonedTime, zonedTimeToUTC)
+import Hours.Time (toHours)
 import Text.Printf (printf)
-import Hours.Time
 
 data Variant a
     = BoolVal Bool
@@ -14,7 +13,7 @@ data Variant a
     | DoubleVal Double
     | IntVal Int
     | StringVal String
-    | TimeVal ZonedTime
+    | TimeVal UTCTime
     | OtherVal a
     deriving Show
 
@@ -28,7 +27,6 @@ variantToLisp = \case
     StringVal    x     -> show x
     OtherVal     x     -> show x
     TimeVal      x     ->
-        let secs = floor (utcTimeToPOSIXSeconds
-                          (zonedTimeToUTC x)) :: Int in
+        let secs = floor (utcTimeToPOSIXSeconds x) :: Int in
         printf "(%d %d 0 0)" (secs `div` 2^(16 :: Int))
                              (secs `mod` 2^(16 :: Int))

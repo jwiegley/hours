@@ -1,5 +1,4 @@
 {-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE RecordWildCards #-}
 
@@ -7,10 +6,9 @@ module Hours.Calc where
 
 -- import Debug.Trace
 
-import           Data.Time.Clock (NominalDiffTime)
-import           Data.Time.LocalTime
-import qualified Hours.Budget as Budget
+import           Data.Time.Clock (UTCTime, NominalDiffTime)
 import           Hours.Budget (Interval(..))
+import qualified Hours.Budget as Budget
 import           Hours.Variant
 
 data Budget t u a = Budget
@@ -35,7 +33,7 @@ data Budget t u a = Budget
     , bLoggedIn              :: Bool
     }
 
-instance (t ~ ZonedTime, u ~ NominalDiffTime, Show a) =>
+instance (t ~ UTCTime, u ~ NominalDiffTime, Show a) =>
     Show (Budget t u a) where
   show Budget {..} = let v = variantToLisp in concat
     [ "((beg                  . ", v (TimeVal      bStart),                ")\n"
@@ -65,7 +63,9 @@ calculateBudget :: (Functor f, Foldable f,
                    Ord t,
                    Fractional u,
                    Budget.HasDelta t u,
-                   Budget.Scalable u u)
+                   Budget.Scalable u u
+                  , Show a, Show t, Show u
+                  )
                 => t
                 -> t
                 -> t
@@ -77,6 +77,19 @@ calculateBudget :: (Functor f, Foldable f,
                 -> g (Interval t u)
                 -> Budget t u a
 calculateBudget beg end now base now' loggedIn ideal def real =
+    -- trace ("now      = " ++ show now) $
+    -- trace ("now'     = " ++ show now') $
+    -- trace ("bNow     = " ++ show bNow) $
+    -- trace ("bStart   = " ++ show bStart) $
+    -- trace ("bEnd     = " ++ show bEnd) $
+    -- trace ("ideal    = " ++ Budget.showIntervals ideal) $
+    -- trace ("real     = " ++ Budget.showIntervals real) $
+    -- trace ("active   = " ++ Budget.showIntervals active) $
+    -- trace ("active'  = " ++ Budget.showIntervals active') $
+    -- trace ("future   = " ++ Budget.showIntervals future) $
+    -- trace ("future'  = " ++ Budget.showIntervals future') $
+    -- trace ("today    = " ++ Budget.showIntervals today) $
+
     Budget {..}
   where
     bStart                = beg
@@ -98,7 +111,8 @@ calculateBudget beg end now base now' loggedIn ideal def real =
     bRealRemaining        = bIdealTotal - bRealCompleted
     bRealThisCompleted    = Budget.sumValues today
     bRealThisRemaining    = activeExpectation - bRealThisCompleted
-    bRealDiscrepancy      = bRealCompleted - bIdealExpectedExact
+    bRealDiscrepancy      = (bIdealExpectedExact - bRealCompleted)
+                                / bIdealTotal
     bCurrentPeriod        = maybe def Budget.value current
     bLoggedIn             = loggedIn
 
@@ -115,17 +129,3 @@ calculateBudget beg end now base now' loggedIn ideal def real =
         | otherwise = hours
       where
         hours = bRealRemaining + bRealThisCompleted
-
-    -- trace ("bStart   = " ++ show bStart) $
-    -- trace ("now      = " ++ show now) $
-    -- trace ("bNow     = " ++ show bNow) $
-    -- trace ("now'     = " ++ show now') $
-    -- trace ("nowBAE   = " ++ show nowBAE) $
-    -- trace ("bEnd     = " ++ show bEnd) $
-    -- trace ("workints = " ++ Budget.showIntervals workIntsWorkHours) $
-    -- trace ("active   = " ++ Budget.showIntervals active) $
-    -- trace ("active'  = " ++ Budget.showIntervals active') $
-    -- trace ("future   = " ++ Budget.showIntervals future) $
-    -- trace ("future'  = " ++ Budget.showIntervals future') $
-    -- trace ("logbook  = " ++ Budget.showIntervals logbook) $
-    -- trace ("today    = " ++ Budget.showIntervals today) $

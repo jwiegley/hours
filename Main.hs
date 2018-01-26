@@ -1,17 +1,16 @@
 module Main where
 
+import qualified Data.Aeson as A
+import qualified Data.ByteString.Lazy.Char8 as BL
+import           Data.Maybe (fromMaybe)
 import           Data.Semigroup (Semigroup((<>)))
-import           Data.Time (defaultTimeLocale)
-import           Data.Time.Clock (getCurrentTime)
-import           Data.Time.Format (formatTime)
-import           Data.Time.LocalTime
+import           Data.Time.Clock (UTCTime, getCurrentTime)
 import           Hours.Budget (mapValues)
 import qualified Hours.Calc as Calc
 import           Hours.Input (IntervalFile(..))
 import qualified Hours.Input as Input
 import           Hours.Time
 import           Options.Applicative
-import           System.Process (readProcessWithExitCode)
 
 data Options = Options
     { ideal :: FilePath
@@ -21,26 +20,37 @@ data Options = Options
 
 options :: Parser Options
 options = Options
-    <$> strOption (long "ideal" <> help "YAML file containing ideal intervals")
-    <*> strOption (long "real"  <> help "YAML file containing real intervals")
+    <$> strOption (long "ideal" <> help "JSON file containing ideal intervals")
+    <*> strOption (long "real"  <> help "JSON file containing real intervals")
     <*> switch    (long "emacs" <> help "Emit statistics in Emacs Lisp form")
 
 main :: IO ()
 main = do
-    opts   <- execParser optsDef
-    now    <- getZonedTime
-    ideals <- Input.readFile (ideal opts)
-    reals  <- Input.readFile (real opts)
-
-    let (beg, end) = (start ideals, finish ideals)
-        base       = setHour 0 now
-
-    print $ Calc.calculateBudget beg end now base (nowThere ideals)
-        (loggedIn reals) (intervals ideals) Input.NotWorking
-        (mapValues snd (intervals reals))
-  where
-    optsDef = info (helper <*> options)
+    opts <- execParser $ info (helper <*> options)
         (fullDesc <> progDesc "Show hours worked so far"
                   <> header "hours - show hours worked so far")
+
+    now    <- getCurrentTime
+    ideals <- fromMaybe (defaultFile now) <$> decodeFile (ideal opts)
+    reals  <- fromMaybe (defaultFile now) <$> decodeFile (real opts)
+
+    print $ Calc.calculateBudget
+        (start ideals)
+        (finish ideals)
+        now
+        (setHour 0 now)
+        (nowThere ideals)
+        (loggedIn reals)
+        (intervals ideals)
+        Input.NotWorking
+        (mapValues snd (intervals reals))
+  where
+    decodeFile :: FilePath -> IO (Maybe Input.IntervalFile)
+    decodeFile p = either error return . A.eitherDecode =<< case p of
+        "-"  -> BL.getContents
+        path -> BL.readFile path
+
+    defaultFile :: UTCTime -> Input.IntervalFile
+    defaultFile now = Input.IntervalFile now now now False []
 
 -- Main.hs (hours) ends here
