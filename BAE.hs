@@ -6,6 +6,7 @@ import Budget (Interval(..))
 import Data.Proxy (Proxy(..))
 import Data.Reflection (reify)
 import Data.Tagged (Tagged(..))
+import Data.Time (NominalDiffTime)
 import Data.Time.Calendar.WeekDate (toWeekDate)
 import Data.Time.LocalTime
 import Data.Time.Recurrence as R
@@ -19,23 +20,23 @@ holidayTable =
     [ mkZonedTime timeZoneBAE 2018 1 1 9 0
     ]
 
-data WorkHours
-    = Holiday
+data WorkDay
+    = NotWorking
+    | Holiday
     | Weekend
     | OffFriday
     | HalfFriday
     | RegularDay
-    | NotWorking
     deriving (Eq, Show)
 
-workHoursToInt :: Bool -> WorkHours -> Int
-workHoursToInt _     NotWorking = 0
-workHoursToInt _     Weekend    = 0
-workHoursToInt _     Holiday    = 0
-workHoursToInt _     OffFriday  = 0
-workHoursToInt _     HalfFriday = 4
-workHoursToInt False RegularDay = 9
-workHoursToInt True  RegularDay = 8
+workHours :: Bool -> WorkDay -> NominalDiffTime
+workHours _     NotWorking = 0
+workHours _     Weekend    = 0
+workHours _     Holiday    = 0
+workHours _     OffFriday  = 0
+workHours _     HalfFriday = fromHours 4
+workHours False RegularDay = fromHours 9
+workHours True  RegularDay = fromHours 8
 
 twoWeekStart :: ZonedTime
 twoWeekStart = mkZonedTime timeZoneBAE 2017 12 29 9 0
@@ -55,9 +56,10 @@ baeTwoWeekRange moment =
     interval _ _ = error "impossible"
 
 workIntervals :: Bool -> ZonedTime -> ZonedTime
-              -> [Interval ZonedTime WorkHours]
+              -> [Interval ZonedTime (WorkDay, NominalDiffTime)]
 workIntervals mine beg fin = reify (zonedTimeZone beg) $ \(Proxy :: Proxy s) ->
-    concatMap go
+    map (fmap (\x -> (x, workHours mine x)))
+        . concatMap go
         . takeWhile (< fin)
         . map unTagged
         . starting (Tagged beg :: Tagged s ZonedTime)
