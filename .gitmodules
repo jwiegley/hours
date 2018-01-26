@@ -1,0 +1,3 @@
+[submodule "org2tc"]
+	path = org2tc
+	url = git://github.com/jwiegley/org2tc.git
