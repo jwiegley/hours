@@ -44,19 +44,28 @@ Note that the 'org2tc' utility must be on your PATH."
            (color-hsl-to-rgb h (* s (min 1 cloudiness)) l))))
 
 (defun jobhours-make-text-properties (logged-in disc dir &optional color)
-  (list :background (or color
-                        (jobhours-dim-color (if (< disc 0)
-                                                "#ffff00000000"
-                                              "#0000ffff0000")
-                                            (abs disc)))
-        :foreground (if logged-in
-                        (if (< dir 0)
-                            "#0000ffffffff"
-                          "yellow")
-                      "#000000000000")
-        :weight (if logged-in 'bold 'light)))
+  (list
+   ;; The idea here is that we want the background to be bright, full red when
+   ;; things are getting to a serious point: i.e., when it becomes difficult
+   ;; to regain the lost ground.
+   ;;
+   ;; Full red means: I'll have to work 10 hours a day, each day for the rest
+   ;; of working period. Full green means: I'll only have to work 6 hours. So,
+   ;; the percentage of color is takes as the different between the work hours
+   ;; needed per day and the nominal 8 hour period, divided by 2.
+   :background (or color
+                   (jobhours-dim-color (if (< disc 0)
+                                           "#ffff00000000"
+                                         "#0000ffff0000")
+                                       (abs disc)))
+   :foreground (if logged-in
+                   (if (< dir 0)
+                       "#0000ffffffff"
+                     "yellow")
+                 "#000000000000")
+   :weight (if logged-in 'bold 'light)))
 
-(defun get-jobhours-string ()
+(defun jobhours-get-string ()
   (with-temp-buffer
     (call-process "jobhours" nil t nil (expand-file-name jobhours-file))
 
@@ -65,44 +74,53 @@ Note that the 'org2tc' utility must be on your PATH."
            (logged-in             (alist-get 'logged-in details))
            (current-period        (alist-get 'current-period details))
            (ideal-total           (alist-get 'ideal-total details))
+           (ideal-remaining       (alist-get 'ideal-remaining details))
            (ideal-expected-exact  (alist-get 'ideal-expected-exact details))
            (real-completed        (alist-get 'real-completed details))
            (real-expected         (alist-get 'real-expected details))
            (real-expected-inact   (alist-get 'real-expected-inact details))
+           (real-remaining        (alist-get 'real-remaining details))
            (real-this-remaining   (alist-get 'real-this-remaining details))
+           (expectation (- real-remaining ideal-remaining))
+           (expectation-days (floor (/ expectation 8.0)))
+           (expectation-hours (mod expectation 8.0))
            (ideal-progress (/ ideal-expected-exact ideal-total))
-           (real-discrepancy (/ (- real-completed ideal-expected-exact)
-                                ideal-total))
-           (properties (apply-partially #'jobhours-make-text-properties
-                                        logged-in real-discrepancy
-                                        real-this-remaining)))
+           (real-discrepancy-perc-diff
+            (/ (- real-completed ideal-expected-exact)
+               ideal-total))
+           (real-discrepancy-nominal-hours (/ (- 8.0 real-expected-inact) 2.0))
+           (properties
+            (apply-partially #'jobhours-make-text-properties
+                             logged-in real-discrepancy-nominal-hours
+                             expectation)))
 
       (delete-region (point-min) (point-max))
-      (insert "  " (format "%s%.1fh %s %.1f"
-                           (if (< real-this-remaining 0) "+" "")
-                           (abs real-this-remaining)
-                           (pcase current-period
-                             (`Holiday    "?")
-                             (`OffFriday  "!")
-                             (`HalfFriday "/")
-                             (`RegularDay "|")
-                             (`NotWorking "∙"))
-                           (min real-expected real-expected-inact)) "  ")
+
+      (insert "  ")
+      (insert (pcase current-period
+                (`Holiday    "?")
+                (`OffFriday  "!")
+                (`HalfFriday "/")
+                (`RegularDay "|")
+                (`NotWorking "∙")))
+      (insert " ")
+      (when (< expectation 0)
+        (insert "+"))
+      (when (> expectation-days 0)
+        (insert (format "%dd " expectation-days)))
+      (insert (format "%.1fh" (abs expectation)))
+      (insert "  ")
 
       ;; Color the whole "time bar" a neutral, light grey
       (add-face-text-property (point-min) (point-max)
                               (funcall properties "grey75"))
 
-      ;; Now darken a percentage of the bar, starting from the left, to show
-      ;; what percentage of the time period has been worked.
+      ;; Darken a percentage of the bar, starting from the left, to show what
+      ;; percentage of the time period has been worked. Color it based on the
+      ;; current progress.
       (add-face-text-property
        (max 1 (- (point-max) (floor (* (point-max) ideal-progress))))
-       (point-max)
-
-       ;; If our moving average is above or below nominal, shade the darker
-       ;; area toward green or red. The further from nominal, the more intense
-       ;; the color becomes, reaching full intensity at 1 work day.
-       (funcall properties))
+       (point-max) (funcall properties))
 
       (buffer-string))))
 
@@ -110,7 +128,7 @@ Note that the 'org2tc' utility must be on your PATH."
 (put 'jobhours-string 'risky-local-variable t)
 
 (defun jobhours-update-string ()
-  (setq jobhours-string (get-jobhours-string)))
+  (setq jobhours-string (jobhours-get-string)))
 
 (defun jobhours-setup-modeline ()
   (run-at-time 0 300 #'jobhours-update-string)
