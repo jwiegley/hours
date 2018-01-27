@@ -1,8 +1,4 @@
-/git-all
-/git-all.hi
-/.shelly/
 /dist/
-/sizes.html
 /Setup
 /default.nix
 /shell.nix
