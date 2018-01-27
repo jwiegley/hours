@@ -23,8 +23,18 @@ diffTimeZone x y = fromIntegral (timeZoneMinutes x - timeZoneMinutes y) * 60
 addHours :: Int -> UTCTime -> UTCTime
 addHours = addUTCTime . fromHours
 
-setHour :: Int -> UTCTime -> UTCTime
-setHour hour now = UTCTime (utctDay now) (fromIntegral hour * 3600)
+localDayStart :: TimeZone -> UTCTime -> UTCTime
+localDayStart zone now = zonedTimeToUTC (setHour 0 znow)
+  where
+    znow = utcToZonedTime zone now
+
+    setHour h t =
+        mkZonedTime (zonedTimeZone t) (fromIntegral yr)
+                    (fromIntegral mon) (fromIntegral day) h 0
+
+    (yr, mon, day) = toGregorian (dayOf znow)
+
+    dayOf = localDay . zonedTimeToLocalTime
 
 toHours :: NominalDiffTime -> Double
 toHours x = realToFrac x / 3600.0 :: Double

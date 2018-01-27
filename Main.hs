@@ -5,6 +5,7 @@ import qualified Data.ByteString.Lazy.Char8 as BL
 import           Data.Maybe (fromMaybe)
 import           Data.Semigroup (Semigroup((<>)))
 import           Data.Time.Clock (UTCTime, getCurrentTime)
+import           Data.Time.LocalTime (getCurrentTimeZone)
 import           Hours.Budget (mapValues)
 import qualified Hours.Calc as Calc
 import           Hours.Input (IntervalFile(..))
@@ -31,6 +32,7 @@ main = do
                   <> header "hours - show hours worked so far")
 
     now    <- getCurrentTime
+    zone   <- getCurrentTimeZone
     ideals <- fromMaybe (defaultFile now) <$> decodeFile (ideal opts)
     reals  <- fromMaybe (defaultFile now) <$> decodeFile (real opts)
 
@@ -38,7 +40,7 @@ main = do
         (start ideals)
         (finish ideals)
         now
-        (setHour 0 now)
+        (localDayStart zone now)
         (nowThere ideals)
         (loggedIn reals)
         (intervals ideals)

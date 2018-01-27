@@ -16,11 +16,19 @@ if [[ ! -x "$(which org2tc)" ]]; then
 fi
 
 function parseorg() {
-    ORG_START=$(echo "$1" | cut -c-19)
-    ORG_END=$(echo "$2" | cut -c-19)
+    ORG_START=$(convert_time "$1")
+    ORG_END=$(convert_time "$2")
 
     org2tc -s "$ORG_START" -e "$ORG_END" "$3"                   \
         | timelog-periods --begin "$1" --end "$2" --file -
+}
+
+function convert_time() {
+    # Cut off the UTC timezone of +0000
+    stamp=$(echo "$*" | cut -c-19)
+    # Reinterpret it as shifted to our timezone (3 hours behind).
+    # NOTE: this is specific to my own use of this script!
+    date --date="$stamp -0300" +'%Y-%m-%d %H:%M:%S'
 }
 
 periods=$(mktemp -t bae-periods.XXXXXXXX)
