@@ -49,22 +49,15 @@ workIntervals mine moment =
   where
     (beg, fin) = baeTwoWeekRange moment
 
-    go b | b == beg =
-           [Interval b (addHours 8 b)
-                     (if mine then RegularDay else OffFriday)]
+    weekDate = thrd . toWeekDate . localDay . utcToLocalTime timeZoneBAE
+      where thrd (_, _, x) = x
 
-         | b `elem` holidayTable =
-           [Interval b (addHours 9 b) Holiday]
-
-         | otherwise =
-           let localTime = utcToLocalTime timeZoneBAE b
-               (_, _, w) = toWeekDate (localDay localTime)
-           in case w of
-                5 -> let mid = addHours 4 b in
-                    if mine
-                    then [Interval b (addHours 8 b) RegularDay]
-                    else [ Interval b mid HalfFriday
-                         , Interval mid (addHours 4 mid) HalfFriday ]
-                _ ->
-                    [Interval b (addHours (if mine then 8 else 9) b)
-                              RegularDay]
+    go b | b == beg, mine       = [ Interval b (addHours 8 b) RegularDay ]
+         | b == beg             = [ Interval b (addHours 8 b) OffFriday  ]
+         | b `elem` holidayTable     = [ Interval b (addHours 9 b) Holiday    ]
+         | 5 <- weekDate b, mine = [ Interval b (addHours 8 b) RegularDay ]
+         | 5 <- weekDate b       = let mid = addHours 4 b in
+                                  [ Interval b mid HalfFriday
+                                  , Interval mid (addHours 4 mid) HalfFriday ]
+         | mine                 = [ Interval b (addHours 8 b) RegularDay ]
+         | otherwise            = [ Interval b (addHours 9 b) RegularDay ]

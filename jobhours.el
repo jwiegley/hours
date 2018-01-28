@@ -97,15 +97,16 @@ Note that the 'org2tc' utility must be on your PATH."
       (delete-region (point-min) (point-max))
 
       (insert "  ")
-      (insert (pcase current-period
-                (`Holiday    "?")
-                (`OffFriday  "!")
-                (`HalfFriday "/")
-                (`RegularDay "|")
-                (`NotWorking "∙")))
+      (insert
+       (if (< expectation 0)
+           "+"
+         (pcase current-period
+           (`Holiday    "?")
+           (`OffFriday  "!")
+           (`HalfFriday "/")
+           (`RegularDay "|")
+           (`NotWorking "∙"))))
       (insert " ")
-      (when (< expectation 0)
-        (insert "+"))
       (when (> expectation-days 0)
         (insert (format "%dd " expectation-days)))
       (insert (format "%.1fh" (abs expectation)))
