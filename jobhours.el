@@ -88,7 +88,7 @@ Note that the 'org2tc' utility must be on your PATH."
            (real-discrepancy-perc-diff
             (/ (- real-completed ideal-expected-exact)
                ideal-total))
-           (real-discrepancy-nominal-hours (/ (- 8.0 real-expected-inact) 2.0))
+           (real-discrepancy-nominal-hours (/ (- 8.0 real-expected) 2.0))
            (properties
             (apply-partially #'jobhours-make-text-properties
                              logged-in real-discrepancy-nominal-hours
