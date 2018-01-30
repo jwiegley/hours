@@ -80,10 +80,9 @@ Note that the 'org2tc' utility must be on your PATH."
            (real-expected        (alist-get 'real-expected details))
            (real-expected-inact  (alist-get 'real-expected-inact details))
            (real-remaining       (alist-get 'real-remaining details))
+           (real-this-completed  (alist-get 'real-this-completed details))
            (real-this-remaining  (alist-get 'real-this-remaining details))
            (expectation (- real-remaining ideal-remaining))
-           (expectation-days (floor (/ expectation 8.0)))
-           (expectation-hours (mod expectation 8.0))
            (ideal-progress (/ ideal-expected-exact ideal-total))
            (real-discrepancy-perc-diff
             (/ (- real-completed ideal-expected-exact)
@@ -97,18 +96,17 @@ Note that the 'org2tc' utility must be on your PATH."
       (delete-region (point-min) (point-max))
 
       (insert "  ")
-      (insert
-       (if (< expectation 0)
-           "+"
-         (pcase current-period
-           (`Holiday    "?")
-           (`OffFriday  "!")
-           (`HalfFriday "/")
-           (`RegularDay "|")
-           (`NotWorking "∙"))))
+      (insert (format "%.1fh" real-this-completed))
       (insert " ")
-      (when (> expectation-days 0)
-        (insert (format "%dd " expectation-days)))
+      (insert (if (< expectation 0)
+                  "+"
+                (pcase current-period
+                  (`Holiday    "?")
+                  (`OffFriday  "!")
+                  (`HalfFriday "/")
+                  (`RegularDay "|")
+                  (_           "∙"))))
+      (insert " ")
       (insert (format "%.1fh" (abs expectation)))
       (insert "  ")
 
