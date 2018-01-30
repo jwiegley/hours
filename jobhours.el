@@ -96,18 +96,18 @@ Note that the 'org2tc' utility must be on your PATH."
       (delete-region (point-min) (point-max))
 
       (insert "  ")
-      (insert (format "%.1fh" real-this-completed))
+      (insert (format "%.1f" real-this-completed))
       (insert " ")
-      (insert (if (< expectation 0)
-                  "+"
-                (pcase current-period
-                  (`Holiday    "?")
-                  (`OffFriday  "!")
-                  (`HalfFriday "/")
-                  (`RegularDay "|")
-                  (_           "∙"))))
+      (insert (pcase current-period
+                (`Holiday    "?")
+                (`OffFriday  "!")
+                (`HalfFriday "/")
+                (`RegularDay "|")
+                (_           "∙")))
       (insert " ")
-      (insert (format "%.1fh" (abs expectation)))
+      (insert (format "%s%.1f"
+                      (if (< expectation 0) "+" "")
+                      (abs expectation)))
       (insert "  ")
 
       ;; Color the whole "time bar" a neutral, light grey
