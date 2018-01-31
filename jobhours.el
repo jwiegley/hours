@@ -127,6 +127,7 @@ Note that the 'org2tc' utility must be on your PATH."
 (put 'jobhours-string 'risky-local-variable t)
 
 (defun jobhours-update-string ()
+  (interactive)
   (setq jobhours-string (jobhours-get-string)))
 
 (defun jobhours-setup-modeline ()
