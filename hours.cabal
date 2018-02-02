@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: ffec7d94a6c7e532a048c0b32509ef9150700c4bfa6f880a2f1529cd1171239b
+-- hash: ce75475071e4d04fc9c2fb03c4512ad867401d24e61982bae73dbc3c87af02d5
 
 name:           hours
 version:        3.0.0
@@ -69,6 +69,11 @@ executable process-hours
       aeson >=1.2.3 && <2.0
     , base >=4 && <5
     , bytestring >=0.10.8 && <1.0
+    , colour
+    , diagrams
+    , diagrams-cairo
+    , diagrams-core
+    , diagrams-lib
     , hours
     , optparse-applicative >=0.5.2 && <1.0
     , text >=1.2.2 && <2.0

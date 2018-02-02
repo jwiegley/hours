@@ -31,6 +31,11 @@ executables:
     main: Main.hs
     dependencies:
       - hours
+      - colour
+      - diagrams
+      - diagrams-cairo
+      - diagrams-core
+      - diagrams-lib
 
   bae-periods:
     source-dirs: bae
