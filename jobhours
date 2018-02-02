@@ -41,5 +41,8 @@ bae-periods --there > "$periods"
 
 START=$(jq -r .start "$periods")
 FINISH=$(jq -r .finish "$periods")
+FILE=$1
+shift 1
 
-process-hours --ideal "$periods" --real <(parseorg "$START" "$FINISH" "$1")
+process-hours --ideal "$periods" \
+              --real <(parseorg "$START" "$FINISH" "$FILE") "$@"
