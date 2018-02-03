@@ -12,30 +12,31 @@ import qualified Hours.Budget as Budget
 import           Hours.Variant
 
 data Budget t u a = Budget
-    { bStart                 :: t
-    , bNow                   :: t
-    , bEnd                   :: t
-    , bIdealTotal            :: u
-    , bIdealExpected         :: u
-    , bIdealRemaining        :: u
-    , bIdealExpectedExact    :: u
-    , bIdealRemainingExact   :: u
-    , bIdealPeriodsLeft      :: Int
-    , bIdealPeriodsLeftIncl  :: Int
-    , bRealCompleted         :: u
-    , bRealExpected          :: u
-    , bRealRemaining         :: u
-    , bRealExpectedInact     :: u
-    , bRealThisCompleted     :: u
-    , bRealThisRemaining     :: u
-    , bCurrentPeriod         :: a
-    , bLoggedIn              :: Bool
+    { bStart                :: t
+    , bNow                  :: t
+    , bEnd                  :: t
+    , bIdealTotal           :: u
+    , bIdealExpected        :: u
+    , bIdealRemaining       :: u
+    , bIdealExpectedExact   :: u
+    , bIdealRemainingExact  :: u
+    , bIdealPeriodsLeft     :: Int
+    , bIdealPeriodsLeftIncl :: Int
+    , bRealCompleted        :: u
+    , bRealExpected         :: u
+    , bRealRemaining        :: u
+    , bRealExpectedInact    :: u
+    , bRealThisCompleted    :: u
+    , bRealThisRemaining    :: u
+    , bCurrentPeriod        :: a
+    , bExpectation          :: u
+    , bLoggedIn             :: Bool
     }
 
 instance (t ~ UTCTime, u ~ NominalDiffTime, Show a) =>
     Show (Budget t u a) where
   show Budget {..} = let v = variantToLisp in concat
-    [ "((beg                  . ", v (TimeVal      bStart),                ")\n"
+    [ "(beg                   . ", v (TimeVal      bStart),                ")\n"
     , "(now                   . ", v (TimeVal      bNow),                  ")\n"
     , "(end                   . ", v (TimeVal      bEnd),                  ")\n"
     , "(ideal-total           . ", v (DiffTimeVal  bIdealTotal),           ")\n"
@@ -52,8 +53,8 @@ instance (t ~ UTCTime, u ~ NominalDiffTime, Show a) =>
     , "(real-this-completed   . ", v (DiffTimeVal  bRealThisCompleted),    ")\n"
     , "(real-this-remaining   . ", v (DiffTimeVal  bRealThisRemaining),    ")\n"
     , "(current-period        . ", v (OtherVal     bCurrentPeriod),        ")\n"
+    , "(expectation           . ", v (DiffTimeVal  bExpectation),          ")\n"
     , "(logged-in             . ", v (BoolVal      bLoggedIn),             ")\n"
-    , ")\n"
     ]
 
 calculateBudget :: (Functor f, Foldable f,
@@ -74,7 +75,7 @@ calculateBudget :: (Functor f, Foldable f,
                 -> a
                 -> g (Interval t u)
                 -> Budget t u a
-calculateBudget beg end now base now' loggedIn ideal def real =
+calculateBudget start finish now base now' loggedIn ideal def real =
     -- trace ("now      = " ++ show now) $
     -- trace ("now'     = " ++ show now') $
     -- trace ("bNow     = " ++ show bNow) $
@@ -90,8 +91,8 @@ calculateBudget beg end now base now' loggedIn ideal def real =
 
     Budget {..}
   where
-    bStart                = beg
-    bEnd                  = end
+    bStart                = start
+    bEnd                  = finish
     bNow                  = now
     bIdealTotal           = bIdealExpected + bIdealRemaining
     bIdealExpected        = Budget.sumValues active
@@ -109,6 +110,8 @@ calculateBudget beg end now base now' loggedIn ideal def real =
     bRealRemaining        = bIdealTotal - bRealCompleted
     bRealThisCompleted    = Budget.sumValues today
     bRealThisRemaining    = activeExpectation - bRealThisCompleted
+    bExpectation          = bRealRemaining - bIdealRemaining
+    bCurrentPeriodSpan    = maybe 0 (\p -> Budget.delta (end p) (begin p)) current
     bCurrentPeriod        = maybe def Budget.value current
     bLoggedIn             = loggedIn
 

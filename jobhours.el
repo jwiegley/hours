@@ -37,34 +37,6 @@ Note that the 'org2tc' utility must be on your PATH."
   :type 'file
   :group 'jobhours)
 
-(defun jobhours-dim-color (color cloudiness)
-  (cl-destructuring-bind (h s l)
-      (apply 'color-rgb-to-hsl (color-name-to-rgb color))
-    (apply 'color-rgb-to-hex
-           (color-hsl-to-rgb h (* s (min 1 cloudiness)) l))))
-
-(defun jobhours-make-text-properties (logged-in disc dir &optional color)
-  (list
-   ;; The idea here is that we want the background to be bright, full red when
-   ;; things are getting to a serious point: i.e., when it becomes difficult
-   ;; to regain the lost ground.
-   ;;
-   ;; Full red means: I'll have to work 10 hours a day, each day for the rest
-   ;; of working period. Full green means: I'll only have to work 6 hours. So,
-   ;; the percentage of color is takes as the different between the work hours
-   ;; needed per day and the nominal 8 hour period, divided by 2.
-   :background (or color
-                   (jobhours-dim-color (if (< disc 0)
-                                           "#ffff00000000"
-                                         "#0000ffff0000")
-                                       (abs disc)))
-   :foreground (if logged-in
-                   (if (< dir 0)
-                       "#0000ffffffff"
-                     "yellow")
-                 "#000000000000")
-   :weight (if logged-in 'bold 'light)))
-
 (defun jobhours-get-string ()
   (with-temp-buffer
     (call-process "jobhours" nil t nil (expand-file-name jobhours-file))
@@ -72,54 +44,32 @@ Note that the 'org2tc' utility must be on your PATH."
     (goto-char (point-min))
     (let* ((details (read (current-buffer)))
            (logged-in            (alist-get 'logged-in details))
-           (current-period       (alist-get 'current-period details))
-           (ideal-total          (alist-get 'ideal-total details))
-           (ideal-remaining      (alist-get 'ideal-remaining details))
-           (ideal-expected-exact (alist-get 'ideal-expected-exact details))
-           (real-completed       (alist-get 'real-completed details))
-           (real-expected        (alist-get 'real-expected details))
-           (real-expected-inact  (alist-get 'real-expected-inact details))
-           (real-remaining       (alist-get 'real-remaining details))
-           (real-this-completed  (alist-get 'real-this-completed details))
-           (real-this-remaining  (alist-get 'real-this-remaining details))
-           (expectation (- real-remaining ideal-remaining))
-           (ideal-progress (/ ideal-expected-exact ideal-total))
-           (real-discrepancy-perc-diff
-            (/ (- real-completed ideal-expected-exact)
-               ideal-total))
-           (real-discrepancy-nominal-hours (/ (- 8.0 real-expected) 2.0))
-           (properties
-            (apply-partially #'jobhours-make-text-properties
-                             logged-in real-discrepancy-nominal-hours
-                             expectation)))
+           (ideal-progress       (alist-get 'ideal-progress details))
+           (display-string       (alist-get 'display-string details))
+           (text-color           (apply #'color-rgb-to-hex
+                                        (alist-get 'text-color details)))
+           (progress-color       (apply #'color-rgb-to-hex
+                                        (alist-get 'progress-color details)))
+
+           (properties (lambda (back)
+                         (list :foreground text-color
+                               :background back
+                               :weight (if logged-in 'bold 'light)))))
 
       (delete-region (point-min) (point-max))
 
-      (insert "  ")
-      (insert (format "%.1f" real-this-completed))
-      (insert " ")
-      (insert (pcase current-period
-                (`Holiday    "?")
-                (`OffFriday  "!")
-                (`HalfFriday "/")
-                (`RegularDay "|")
-                (_           "∙")))
-      (insert " ")
-      (insert (format "%s%.1f"
-                      (if (< expectation 0) "+" "")
-                      (abs expectation)))
-      (insert "  ")
+      (insert "  " display-string "  ")
 
       ;; Color the whole "time bar" a neutral, light grey
       (add-face-text-property (point-min) (point-max)
                               (funcall properties "grey75"))
 
-      ;; Darken a percentage of the bar, starting from the left, to show what
+      ;; Darken a percentage of the bar, starting from the right, to show what
       ;; percentage of the time period has been worked. Color it based on the
       ;; current progress.
       (add-face-text-property
        (max 1 (- (point-max) (floor (* (point-max) ideal-progress))))
-       (point-max) (funcall properties))
+       (point-max) (funcall properties progress-color))
 
       (buffer-string))))
 

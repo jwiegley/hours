@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: ce75475071e4d04fc9c2fb03c4512ad867401d24e61982bae73dbc3c87af02d5
+-- hash: 0fc3519e91baef33218dca61a59afa682602fe780954d4b6d664bac5af907a42
 
 name:           hours
 version:        3.0.0
@@ -36,6 +36,7 @@ library
       aeson >=1.2.3 && <2.0
     , base >=4 && <5
     , bytestring >=0.10.8 && <1.0
+    , colour >=2.3.4 && <3.0
     , optparse-applicative >=0.5.2 && <1.0
     , text >=1.2.2 && <2.0
     , these >=0.7.4 && <1.0
@@ -53,6 +54,7 @@ executable bae-periods
       aeson >=1.2.3 && <2.0
     , base >=4 && <5
     , bytestring >=0.10.8 && <1.0
+    , colour >=2.3.4 && <3.0
     , hours
     , optparse-applicative >=0.5.2 && <1.0
     , text >=1.2.2 && <2.0
@@ -69,7 +71,7 @@ executable process-hours
       aeson >=1.2.3 && <2.0
     , base >=4 && <5
     , bytestring >=0.10.8 && <1.0
-    , colour
+    , colour >=2.3.4 && <3.0
     , diagrams
     , diagrams-cairo
     , diagrams-core
@@ -92,6 +94,7 @@ executable timelog-periods
       aeson >=1.2.3 && <2.0
     , base >=4 && <5
     , bytestring >=0.10.8 && <1.0
+    , colour >=2.3.4 && <3.0
     , hours
     , optparse-applicative >=0.5.2 && <1.0
     , text >=1.2.2 && <2.0

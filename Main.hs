@@ -1,6 +1,8 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ViewPatterns #-}
 
 module Main where
 
@@ -20,6 +22,7 @@ import           Hours.Calc
 import           Hours.Input (IntervalFile(..), WorkDay(..))
 import qualified Hours.Input as Input
 import           Hours.Time
+import           Hours.Variant
 import           Options.Applicative
 import           Text.Printf
 
@@ -65,72 +68,87 @@ main = do
             (mapValues snd (intervals reals))
 
     case diagram opts of
-        Nothing   -> print stats
+        Nothing   -> putStrLn (hoursLispForm stats)
         Just path ->
             let w = fromMaybe 600 (width opts) in
             renderCairo path (mkWidth (fromIntegral w))
                 (hoursDiagram (fromMaybe 150 (height opts)) w stats)
-  where
-    decodeFile :: FilePath -> IO (Maybe Input.IntervalFile)
-    decodeFile p = either error return . A.eitherDecode =<< case p of
-        "-"  -> BL.getContents
-        path -> BL.readFile path
 
-    defaultFile :: UTCTime -> Input.IntervalFile
-    defaultFile now = Input.IntervalFile now now now False []
+decodeFile :: FilePath -> IO (Maybe Input.IntervalFile)
+decodeFile p = either error return . A.eitherDecode =<< case p of
+    "-"  -> BL.getContents
+    path -> BL.readFile path
 
-dimColor :: (Fractional a, RealFrac a, Ord a)
-         => Colour a -> Colour a -> a -> Colour a
-dimColor background color factor = withOpacity color factor `over` background
+defaultFile :: UTCTime -> Input.IntervalFile
+defaultFile now = Input.IntervalFile now now now False []
+
+dimColor :: (Num a, Ord a)
+              => Colour a -> Colour a -> Colour a -> a -> Colour a
+dimColor background ahead behind progress =
+    withOpacity (if progress < 0
+                 then behind
+                 else ahead) (abs progress) `over` background
+
+progressColor :: Budget t NominalDiffTime a -> Colour Double
+progressColor = dimColor darkgrey red green . realDiscrepancy
+
+textColor :: Budget t NominalDiffTime a -> Colour Double
+textColor b | bLoggedIn b, bExpectation b < 0 = cyan
+            | bLoggedIn b                     = yellow
+            | otherwise                       = black
+
+idealProgress :: Budget t NominalDiffTime a -> Double
+idealProgress Budget {..} = toHours bIdealExpectedExact / toHours bIdealTotal
+
+realDiscrepancy :: Budget t NominalDiffTime a -> Double
+realDiscrepancy Budget {..} = (toHours bRealExpected - 8.0) / 2.0
+
+indicator :: Budget t u WorkDay -> String
+indicator (bCurrentPeriod -> Holiday)    = "?"
+indicator (bCurrentPeriod -> OffFriday)  = "!"
+indicator (bCurrentPeriod -> HalfFriday) = "/"
+indicator (bCurrentPeriod -> RegularDay) = "|"
+indicator _                             = "∙"
+
+displayString :: Budget t NominalDiffTime WorkDay -> String
+displayString budget@Budget {..} = printf "%.1f %s %s%.1f"
+    (toHours bRealThisCompleted)
+    (indicator budget)
+    (if bExpectation < 0 then "+" else "")
+    (abs (toHours bExpectation))
+
+hoursLispForm :: Budget UTCTime NominalDiffTime WorkDay -> String
+hoursLispForm b = concat
+    [ "("
+    , printf "(ideal-progress        . %.4f)\n" (idealProgress b)
+    , printf "(real-discrepancy      . %.4f)\n" (realDiscrepancy b)
+    , printf "(display-string        . \"%s\")\n" (displayString b)
+    , printf "(indicator             . \"%s\")\n" (indicator b)
+    , printf "(text-color            . %s)\n"
+             (variantToLisp (ColourVal (textColor b) :: Variant ()))
+    , printf "(progress-color        . %s)\n"
+             (variantToLisp (ColourVal (progressColor b):: Variant ()))
+    , show b
+    , ")"
+    ]
 
 hoursDiagram :: Int
              -> Int
              -> Budget UTCTime NominalDiffTime WorkDay
              -> QDiagram Cairo V2 Double Any
-hoursDiagram height width Budget {..}
-    = textDisplay <> (completionBar <> backgroundBar) # centerX
+hoursDiagram height width b@Budget {..} =
+    textDisplay <> (completionBar <> backgroundBar) # centerX
   where
-    textDisplay = text displayString
+    textDisplay = text (displayString b)
         # font "DejaVu Mono"
         # fontSize (local (20 * (barWidth / barHeight)))
         # fontWeight FontWeightBold
-        # fc textColor
+        # fc (textColor b)
 
-    completionBar = rect completionWidth barHeight # fc foregroundColor # alignR
-    backgroundBar = rect barWidth barHeight # fc barColor # alignR
-
-    displayString = printf "%.1f %s %s%.1f"
-        (toHours bRealThisCompleted)
-        (case bCurrentPeriod of
-             Holiday    -> "?"
-             OffFriday  -> "!"
-             HalfFriday -> "/"
-             RegularDay -> "|"
-             _          -> "∙")
-        (if expectation < 0 then "+" else "")
-        (toHours (abs expectation))
-
-    textColor       | bLoggedIn, expectation < 0 = cyan
-                    | bLoggedIn = yellow
-                    | otherwise = black
-    foregroundColor = dimColor darkgrey
-        (if discrepancy < 0
-         then behindColor
-         else aheadColor)
-        (abs discrepancy)
-    barColor        = lightgrey
-    aheadColor      = green
-    behindColor     = red
-
-    discrepancy   = (toHours bRealExpected - 8.0) / 2.0
-    expectation   = bRealRemaining - bIdealRemaining
-    idealProgress = toHours bIdealExpectedExact / toHours bIdealTotal
-
-    barWidth :: Double
-    barWidth = fromIntegral width
-
-    barHeight :: Double
-    barHeight = fromIntegral height
-
-    completionWidth :: Double
-    completionWidth = barWidth * idealProgress
+    barWidth        = fromIntegral width
+    barHeight       = fromIntegral height
+    completionWidth = barWidth * idealProgress b
+    backgroundBar   = rect barWidth barHeight
+                    # fc lightgrey # alignR
+    completionBar   = rect completionWidth barHeight
+                    # fc (progressColor b) # alignR

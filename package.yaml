@@ -11,6 +11,7 @@ dependencies:
   - aeson                >= 1.2.3  && < 2.0
   - base                 >= 4      && < 5
   - bytestring           >= 0.10.8 && < 1.0
+  - colour               >= 2.3.4  && < 3.0
   - optparse-applicative >= 0.5.2  && < 1.0
   - text                 >= 1.2.2  && < 2.0
   - these                >= 0.7.4  && < 1.0
@@ -31,7 +32,6 @@ executables:
     main: Main.hs
     dependencies:
       - hours
-      - colour
       - diagrams
       - diagrams-cairo
       - diagrams-core
