@@ -37,9 +37,17 @@ Note that the 'org2tc' utility must be on your PATH."
   :type 'file
   :group 'jobhours)
 
+(defcustom jobhours-diagram-path nil
+  "If non-nil, the pathname of a PNG file to hold the jobhours diagram."
+  :type '(choice (const :tag "Do not generate" nil) file)
+  :group 'jobhours)
+
 (defun jobhours-get-string ()
   (with-temp-buffer
-    (call-process "jobhours" nil t nil (expand-file-name jobhours-file))
+    (apply #'call-process "jobhours" nil t nil
+           (cons (expand-file-name jobhours-file)
+                 (and jobhours-diagram-path
+                      (list "--diagram" jobhours-diagram-path))))
 
     (goto-char (point-min))
     (let* ((details (read (current-buffer)))

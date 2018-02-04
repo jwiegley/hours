@@ -9,6 +9,7 @@ module Main where
 import qualified Data.Aeson as A
 import qualified Data.ByteString.Lazy.Char8 as BL
 import           Data.Colour
+import           Data.Foldable
 import           Data.Maybe (fromMaybe)
 import           Data.Semigroup (Semigroup((<>)))
 import           Data.Time.Clock (UTCTime, NominalDiffTime, getCurrentTime)
@@ -29,7 +30,6 @@ import           Text.Printf
 data Options = Options
     { ideal   :: FilePath
     , real    :: FilePath
-    , emacs   :: Bool
     , height  :: Maybe Int
     , width   :: Maybe Int
     , diagram :: Maybe FilePath
@@ -39,7 +39,6 @@ options :: Parser Options
 options = Options
     <$> strOption (long "ideal"   <> help "JSON file containing ideal intervals")
     <*> strOption (long "real"    <> help "JSON file containing real intervals")
-    <*> switch    (long "emacs"   <> help "Emit statistics in Emacs Lisp form")
     <*> optional (option auto (long "height" <> help "Height of the graphical display"))
     <*> optional (option auto (long "width" <> help "Height of the graphical display"))
     <*> optional (strOption (
@@ -67,12 +66,12 @@ main = do
             Input.NotWorking
             (mapValues snd (intervals reals))
 
-    case diagram opts of
-        Nothing   -> putStrLn (hoursLispForm stats)
-        Just path ->
-            let w = fromMaybe 600 (width opts) in
-            renderCairo path (mkWidth (fromIntegral w))
-                (hoursDiagram (fromMaybe 150 (height opts)) w stats)
+    putStrLn (hoursLispForm stats)
+
+    forM_ (diagram opts) $ \path -> do
+        let w = fromMaybe 600 (width opts)
+        renderCairo path (mkWidth (fromIntegral w))
+            (hoursDiagram (fromMaybe 150 (height opts)) w stats)
 
 decodeFile :: FilePath -> IO (Maybe Input.IntervalFile)
 decodeFile p = either error return . A.eitherDecode =<< case p of
