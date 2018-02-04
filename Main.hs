@@ -149,6 +149,6 @@ hoursDiagram height width b@Budget {..} =
     barHeight       = fromIntegral height
     completionWidth = barWidth * idealProgress b
     backgroundBar   = rect barWidth barHeight
-                    # fc lightgrey # alignR
+                    # fc lightgrey # alignL
     completionBar   = rect completionWidth barHeight
-                    # fc (progressColor b) # alignR
+                    # fc (progressColor b) # alignL
