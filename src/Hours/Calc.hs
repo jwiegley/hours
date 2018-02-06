@@ -6,10 +6,28 @@ module Hours.Calc where
 
 -- import Debug.Trace
 
+import           Data.Colour
+import           Data.Colour.Names
 import           Data.Time.Clock (UTCTime, NominalDiffTime)
 import           Hours.Budget (Interval(..))
 import qualified Hours.Budget as Budget
 import           Hours.Variant
+
+dimColor :: (Num a, Ord a)
+         => Colour a -> Colour a -> Colour a -> a -> Colour a
+dimColor background ahead behind progress =
+    withOpacity (if progress < 0
+                 then behind
+                 else ahead) (abs progress) `over` background
+
+progressColor :: Double -> Colour Double
+progressColor = dimColor darkgrey red green
+
+textColor :: (Ord u, Num u) => Bool -> Budget t u a -> Colour Double
+textColor loggedIn b
+    | loggedIn, bExpectation b < 0 = cyan
+    | loggedIn                     = yellow
+    | otherwise                    = black
 
 data Budget t u a = Budget
     { bStart                :: t
@@ -29,32 +47,32 @@ data Budget t u a = Budget
     , bRealThisCompleted    :: u
     , bRealThisRemaining    :: u
     , bCurrentPeriod        :: a
+    , bCurrentPeriodSpan    :: u
     , bExpectation          :: u
-    , bLoggedIn             :: Bool
     }
 
 instance (t ~ UTCTime, u ~ NominalDiffTime, Show a) =>
     Show (Budget t u a) where
   show Budget {..} = let v = variantToLisp in concat
-    [ "(beg                   . ", v (TimeVal      bStart),                ")\n"
-    , "(now                   . ", v (TimeVal      bNow),                  ")\n"
-    , "(end                   . ", v (TimeVal      bEnd),                  ")\n"
-    , "(ideal-total           . ", v (DiffTimeVal  bIdealTotal),           ")\n"
-    , "(ideal-expected        . ", v (DiffTimeVal  bIdealExpected),        ")\n"
-    , "(ideal-remaining       . ", v (DiffTimeVal  bIdealRemaining),       ")\n"
-    , "(ideal-expected-exact  . ", v (DiffTimeVal  bIdealExpectedExact),   ")\n"
-    , "(ideal-remaining-exact . ", v (DiffTimeVal  bIdealRemainingExact),  ")\n"
-    , "(ideal-days-left       . ", v (IntVal       bIdealPeriodsLeft),     ")\n"
-    , "(ideal-days-left-incl  . ", v (IntVal       bIdealPeriodsLeftIncl), ")\n"
-    , "(real-completed        . ", v (DiffTimeVal  bRealCompleted),        ")\n"
-    , "(real-expected         . ", v (DiffTimeVal  bRealExpected),         ")\n"
-    , "(real-remaining        . ", v (DiffTimeVal  bRealRemaining),        ")\n"
-    , "(real-expected-inact   . ", v (DiffTimeVal  bRealExpectedInact),    ")\n"
-    , "(real-this-completed   . ", v (DiffTimeVal  bRealThisCompleted),    ")\n"
-    , "(real-this-remaining   . ", v (DiffTimeVal  bRealThisRemaining),    ")\n"
-    , "(current-period        . ", v (OtherVal     bCurrentPeriod),        ")\n"
-    , "(expectation           . ", v (DiffTimeVal  bExpectation),          ")\n"
-    , "(logged-in             . ", v (BoolVal      bLoggedIn),             ")\n"
+    [ "(beg                    . ", v (TimeVal      bStart),                ")\n"
+    , "(now                    . ", v (TimeVal      bNow),                  ")\n"
+    , "(end                    . ", v (TimeVal      bEnd),                  ")\n"
+    , "(ideal-total            . ", v (DiffTimeVal  bIdealTotal),           ")\n"
+    , "(ideal-expected         . ", v (DiffTimeVal  bIdealExpected),        ")\n"
+    , "(ideal-remaining        . ", v (DiffTimeVal  bIdealRemaining),       ")\n"
+    , "(ideal-expected-exact   . ", v (DiffTimeVal  bIdealExpectedExact),   ")\n"
+    , "(ideal-remaining-exact  . ", v (DiffTimeVal  bIdealRemainingExact),  ")\n"
+    , "(ideal-days-left        . ", v (IntVal       bIdealPeriodsLeft),     ")\n"
+    , "(ideal-days-left-incl   . ", v (IntVal       bIdealPeriodsLeftIncl), ")\n"
+    , "(real-completed         . ", v (DiffTimeVal  bRealCompleted),        ")\n"
+    , "(real-remaining         . ", v (DiffTimeVal  bRealRemaining),        ")\n"
+    , "(real-expected          . ", v (DiffTimeVal  bRealExpected),         ")\n"
+    , "(real-expected-inact    . ", v (DiffTimeVal  bRealExpectedInact),    ")\n"
+    , "(real-this-completed    . ", v (DiffTimeVal  bRealThisCompleted),    ")\n"
+    , "(real-this-remaining    . ", v (DiffTimeVal  bRealThisRemaining),    ")\n"
+    , "(current-period         . ", v (OtherVal     bCurrentPeriod),        ")\n"
+    , "(current-period-span    . ", v (DiffTimeVal  bCurrentPeriodSpan),    ")\n"
+    , "(expectation            . ", v (DiffTimeVal  bExpectation),          ")\n"
     ]
 
 calculateBudget :: (Functor f, Foldable f,
@@ -113,7 +131,6 @@ calculateBudget start finish now base now' loggedIn ideal def real =
     bExpectation          = bRealRemaining - bIdealRemaining
     bCurrentPeriodSpan    = maybe 0 (\p -> Budget.delta (end p) (begin p)) current
     bCurrentPeriod        = maybe def Budget.value current
-    bLoggedIn             = loggedIn
 
     idealFst              = Budget.mapValues fst ideal
     idealSnd              = Budget.mapValues snd ideal

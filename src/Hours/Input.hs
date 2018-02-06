@@ -7,6 +7,7 @@ module Hours.Input where
 
 import           Data.Aeson
 import           Data.ByteString.Lazy (ByteString)
+import qualified Data.ByteString.Lazy as BL
 import           Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.List.NonEmpty as NE
 import           Data.Semigroup (Semigroup(sconcat), Max(..), Min(..))
@@ -66,6 +67,9 @@ instance ToJSON IntervalFile where
                , "logged-in"    .= l
                , "intervals"    .= v ]
 
+defaultFile :: UTCTime -> IntervalFile
+defaultFile now = IntervalFile now now now False []
+
 encodeIntervals :: UTCTime
                 -> Bool
                 -> [Interval UTCTime (WorkDay, NominalDiffTime)]
@@ -75,3 +79,8 @@ encodeIntervals moment b xxs@(x:xs) = encode . Just $
     IntervalFile (getMin (sconcat (NE.map (Min . begin) (x :| xs))))
                  (getMax (sconcat (NE.map (Max . end)   (x :| xs))))
                  moment b xxs
+
+decodeFile :: FilePath -> IO (Maybe IntervalFile)
+decodeFile p = either error return . eitherDecode =<< case p of
+    "-"  -> BL.getContents
+    path -> BL.readFile path

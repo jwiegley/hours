@@ -6,16 +6,14 @@
 
 module Main where
 
-import qualified Data.Aeson as A
-import qualified Data.ByteString.Lazy.Char8 as BL
-import           Data.Colour
 import           Data.Foldable
 import           Data.Maybe (fromMaybe)
 import           Data.Semigroup (Semigroup((<>)))
-import           Data.Time.Clock (UTCTime, NominalDiffTime, getCurrentTime)
+import           Data.Time.Clock (UTCTime, NominalDiffTime,
+                                  getCurrentTime)
 import           Data.Time.LocalTime (getCurrentTimeZone)
 import           Diagrams.Backend.Cairo
-import           Diagrams.Prelude hiding (Options, (<>), start, over,
+import           Diagrams.Prelude hiding (Options, (<>), start,
                                           option, height, width)
 import           Diagrams.TwoD.Text
 import           Hours.Budget (mapValues)
@@ -37,12 +35,20 @@ data Options = Options
 
 options :: Parser Options
 options = Options
-    <$> strOption (long "ideal"   <> help "JSON file containing ideal intervals")
-    <*> strOption (long "real"    <> help "JSON file containing real intervals")
-    <*> optional (option auto (long "height" <> help "Height of the graphical display"))
-    <*> optional (option auto (long "width" <> help "Height of the graphical display"))
+    <$> strOption (
+          long "ideal" <>
+          help "JSON file containing ideal intervals")
+    <*> strOption (
+          long "real" <> help "JSON file containing real intervals")
+    <*> optional (option auto (
+          long "height" <>
+          help "Height of the graphical display"))
+    <*> optional (option auto (
+          long "width" <>
+          help "Height of the graphical display"))
     <*> optional (strOption (
-          long "diagram" <> help "Output graphic diagram as a .PNG file"))
+          long "diagram" <>
+          help "Output graphic diagram as a .PNG file"))
 
 main :: IO ()
 main = do
@@ -52,8 +58,11 @@ main = do
 
     now    <- getCurrentTime
     zone   <- getCurrentTimeZone
-    ideals <- fromMaybe (defaultFile now) <$> decodeFile (ideal opts)
-    reals  <- fromMaybe (defaultFile now) <$> decodeFile (real opts)
+
+    let decode f = fmap (fromMaybe (Input.defaultFile now))
+                 . Input.decodeFile $ f opts
+    ideals <- decode ideal
+    reals  <- decode real
 
     let stats = calculateBudget
             (start ideals)
@@ -66,41 +75,25 @@ main = do
             Input.NotWorking
             (mapValues snd (intervals reals))
 
-    putStrLn (hoursLispForm stats)
+    putStrLn (hoursLispForm (loggedIn reals) stats)
 
     forM_ (diagram opts) $ \path -> do
         let w = fromMaybe 600 (width opts)
         renderCairo path (mkWidth (fromIntegral w))
-            (hoursDiagram (fromMaybe 150 (height opts)) w stats)
-
-decodeFile :: FilePath -> IO (Maybe Input.IntervalFile)
-decodeFile p = either error return . A.eitherDecode =<< case p of
-    "-"  -> BL.getContents
-    path -> BL.readFile path
-
-defaultFile :: UTCTime -> Input.IntervalFile
-defaultFile now = Input.IntervalFile now now now False []
-
-dimColor :: (Num a, Ord a)
-              => Colour a -> Colour a -> Colour a -> a -> Colour a
-dimColor background ahead behind progress =
-    withOpacity (if progress < 0
-                 then behind
-                 else ahead) (abs progress) `over` background
-
-progressColor :: Budget t NominalDiffTime a -> Colour Double
-progressColor = dimColor darkgrey red green . realDiscrepancy
-
-textColor :: Budget t NominalDiffTime a -> Colour Double
-textColor b | bLoggedIn b, bExpectation b < 0 = cyan
-            | bLoggedIn b                     = yellow
-            | otherwise                       = black
+            (hoursDiagram (fromMaybe 150 (height opts)) w
+                 (loggedIn reals) stats)
 
 idealProgress :: Budget t NominalDiffTime a -> Double
 idealProgress Budget {..} = toHours bIdealExpectedExact / toHours bIdealTotal
 
+discrepancy :: NominalDiffTime -> Budget t NominalDiffTime a -> Double
+discrepancy e Budget {..} = (toHours e - 8.0) / 2.0
+
 realDiscrepancy :: Budget t NominalDiffTime a -> Double
-realDiscrepancy Budget {..} = (toHours bRealExpected - 8.0) / 2.0
+realDiscrepancy b = discrepancy (bRealExpected b) b
+
+realDiscrepancyInact :: Budget t NominalDiffTime a -> Double
+realDiscrepancyInact b = discrepancy (bRealExpectedInact b) b
 
 indicator :: Budget t u WorkDay -> String
 indicator (bCurrentPeriod -> Holiday)    = "?"
@@ -116,38 +109,51 @@ displayString budget@Budget {..} = printf "%.1f %s %s%.1f"
     (if bExpectation < 0 then "+" else "")
     (abs (toHours bExpectation))
 
-hoursLispForm :: Budget UTCTime NominalDiffTime WorkDay -> String
-hoursLispForm b = concat
+hoursLispForm :: Bool -> Budget UTCTime NominalDiffTime WorkDay -> String
+hoursLispForm loggedIn b = concat
     [ "("
-    , printf "(ideal-progress        . %.4f)\n" (idealProgress b)
-    , printf "(real-discrepancy      . %.4f)\n" (realDiscrepancy b)
-    , printf "(display-string        . \"%s\")\n" (displayString b)
-    , printf "(indicator             . \"%s\")\n" (indicator b)
-    , printf "(text-color            . %s)\n"
-             (variantToLisp (ColourVal (textColor b) :: Variant ()))
-    , printf "(progress-color        . %s)\n"
-             (variantToLisp (ColourVal (progressColor b):: Variant ()))
+    , printf "(logged-in              . %s)\n"
+             (variantToLisp (BoolVal loggedIn :: Variant ()))
+    , printf "(ideal-progress         . %.4f)\n" (idealProgress b)
+    , printf "(real-discrepancy       . %.4f)\n" (realDiscrepancy b)
+    , printf "(real-discrepancy-inact . %.4f)\n" (realDiscrepancyInact b)
+    , printf "(display-string         . \"%s\")\n" (displayString b)
+    , printf "(indicator              . \"%s\")\n" (indicator b)
+    , printf "(text-color             . %s)\n"
+             (variantToLisp
+              (ColourVal (textColor loggedIn b) :: Variant ()))
+    , printf "(progress-color         . %s)\n"
+             (variantToLisp
+              (ColourVal (progressColor
+                          (realDiscrepancy b)) :: Variant ()))
+    , printf "(progress-color-inact   . %s)\n"
+             (variantToLisp
+              (ColourVal (progressColor
+                          (realDiscrepancyInact b)) :: Variant ()))
     , show b
     , ")"
     ]
 
 hoursDiagram :: Int
              -> Int
+             -> Bool
              -> Budget UTCTime NominalDiffTime WorkDay
              -> QDiagram Cairo V2 Double Any
-hoursDiagram height width b@Budget {..} =
+hoursDiagram height width loggedIn b@Budget {..} =
     textDisplay <> (completionBar <> backgroundBar) # centerX
   where
     textDisplay = text (displayString b)
         # font "DejaVu Mono"
         # fontSize (local (20 * (barWidth / barHeight)))
         # fontWeight FontWeightBold
-        # fc (textColor b)
+        # fc (textColor loggedIn b)
 
     barWidth        = fromIntegral width
     barHeight       = fromIntegral height
     completionWidth = barWidth * idealProgress b
     backgroundBar   = rect barWidth barHeight
-                    # fc lightgrey # alignL
+                    # fc lightgrey
+                    # alignL
     completionBar   = rect completionWidth barHeight
-                    # fc (progressColor b) # alignL
+                    # fc (progressColor (realDiscrepancy b))
+                    # alignL
