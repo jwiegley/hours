@@ -99,8 +99,9 @@ indicator (bCurrentPeriod -> RegularDay) = "|"
 indicator _ = "∙"
 
 displayString :: Bool -> Budget t NominalDiffTime WorkDay -> String
-displayString loggedIn budget@Budget {..} = printf "%.1f %s %.1f"
-    (toHours bRealThisRemaining)
+displayString loggedIn budget@Budget {..} = printf "%s%.1f %s %.1f"
+    (if bRealThisRemaining < 0 then "+" else "")
+    (abs (toHours bRealThisRemaining))
     (indicator budget)
     (toHours (if loggedIn
               then bRealExpected
