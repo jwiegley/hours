@@ -86,28 +86,25 @@ main = do
 idealProgress :: Budget t NominalDiffTime a -> Double
 idealProgress Budget {..} = toHours bIdealExpectedExact / toHours bIdealTotal
 
-discrepancy :: NominalDiffTime -> Budget t NominalDiffTime a -> Double
-discrepancy e Budget {..} = (toHours e - 8.0) / 2.0
-
 realDiscrepancy :: Budget t NominalDiffTime a -> Double
-realDiscrepancy b = discrepancy (bRealExpected b) b
-
-realDiscrepancyInact :: Budget t NominalDiffTime a -> Double
-realDiscrepancyInact b = discrepancy (bRealExpectedInact b) b
+realDiscrepancy b = (toHours (bRealRemaining b) -
+                     toHours (bIdealRemainingExact b)) /
+                    (16.0 - (12.0 * idealProgress b))
 
 indicator :: Budget t u WorkDay -> String
 indicator (bCurrentPeriod -> Holiday)    = "?"
 indicator (bCurrentPeriod -> OffFriday)  = "!"
 indicator (bCurrentPeriod -> HalfFriday) = "/"
 indicator (bCurrentPeriod -> RegularDay) = "|"
-indicator _                             = "∙"
+indicator _ = "∙"
 
-displayString :: Budget t NominalDiffTime WorkDay -> String
-displayString budget@Budget {..} = printf "%.1f %s %s%.1f"
-    (toHours bRealThisCompleted)
+displayString :: Bool -> Budget t NominalDiffTime WorkDay -> String
+displayString loggedIn budget@Budget {..} = printf "%.1f %s %.1f"
+    (toHours bRealThisRemaining)
     (indicator budget)
-    (if bExpectation < 0 then "+" else "")
-    (abs (toHours bExpectation))
+    (toHours (if loggedIn
+              then bRealExpected
+              else bRealExpectedInact))
 
 hoursLispForm :: Bool -> Budget UTCTime NominalDiffTime WorkDay -> String
 hoursLispForm loggedIn b = concat
@@ -116,8 +113,7 @@ hoursLispForm loggedIn b = concat
              (variantToLisp (BoolVal loggedIn :: Variant ()))
     , printf "(ideal-progress         . %.4f)\n" (idealProgress b)
     , printf "(real-discrepancy       . %.4f)\n" (realDiscrepancy b)
-    , printf "(real-discrepancy-inact . %.4f)\n" (realDiscrepancyInact b)
-    , printf "(display-string         . \"%s\")\n" (displayString b)
+    , printf "(display-string         . \"%s\")\n" (displayString loggedIn b)
     , printf "(indicator              . \"%s\")\n" (indicator b)
     , printf "(text-color             . %s)\n"
              (variantToLisp
@@ -126,13 +122,7 @@ hoursLispForm loggedIn b = concat
              (variantToLisp
               (ColourVal (progressColor
                           (realDiscrepancy b)) :: Variant ()))
-    , printf "(progress-color-inact   . %s)\n"
-             (variantToLisp
-              (ColourVal (progressColor
-                          (realDiscrepancyInact b)) :: Variant ()))
-    , show b
-    , ")"
-    ]
+    , show b, ")" ]
 
 hoursDiagram :: Int
              -> Int
@@ -142,18 +132,20 @@ hoursDiagram :: Int
 hoursDiagram height width loggedIn b@Budget {..} =
     textDisplay <> (completionBar <> backgroundBar) # centerX
   where
-    textDisplay = text (displayString b)
-        # font "DejaVu Mono"
-        # fontSize (local (20 * (barWidth / barHeight)))
-        # fontWeight FontWeightBold
-        # fc (textColor loggedIn b)
+    textDisplay     = text (displayString loggedIn b)
+                    # font "DejaVu Sans Mono"
+                    # fontSize (local (20 * (barWidth / barHeight)))
+                    # fontWeight FontWeightBold
+                    # fc (textColor loggedIn b)
 
     barWidth        = fromIntegral width
     barHeight       = fromIntegral height
     completionWidth = barWidth * idealProgress b
+
     backgroundBar   = rect barWidth barHeight
                     # fc lightgrey
                     # alignL
+
     completionBar   = rect completionWidth barHeight
                     # fc (progressColor (realDiscrepancy b))
                     # alignL
