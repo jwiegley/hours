@@ -17,10 +17,7 @@ fi
 
 function parseorg() {
     ORG_START=$(convert_time "$1")
-    ORG_END=$(convert_time "$2")
-
-    org2tc -s "$ORG_START" -e "$ORG_END" "$3"                   \
-        | timelog-periods --begin "$1" --end "$2" --file -
+    org2tc -s "$ORG_START" "$2" | timelog-periods --file -
 }
 
 function convert_time() {
@@ -28,7 +25,7 @@ function convert_time() {
     stamp=$(echo "$*" | cut -c-19)
     # Reinterpret it as shifted to our timezone (3 hours behind).
     # NOTE: this is specific to my own use of this script!
-    date --date="$stamp -0300" +'%Y-%m-%d %H:%M:%S'
+    date --date="$stamp -0000" +'%Y-%m-%d %H:%M:%S'
 }
 
 periods=$(mktemp -t bae-periods.XXXXXXXX)
@@ -45,4 +42,4 @@ FILE=$1
 shift 1
 
 process-hours --ideal "$periods" \
-              --real <(parseorg "$START" "$FINISH" "$FILE") "$@"
+              --real <(parseorg "$START" "$FILE") "$@"

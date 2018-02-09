@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 0fc3519e91baef33218dca61a59afa682602fe780954d4b6d664bac5af907a42
+-- hash: b9c0548c9fb7c5b23b4cd8c163a1b3fca2963ae754a94b840efd1354bd3f894b
 
 name:           hours
 version:        3.0.0
@@ -37,6 +37,7 @@ library
     , base >=4 && <5
     , bytestring >=0.10.8 && <1.0
     , colour >=2.3.4 && <3.0
+    , mtl >=2.2.1 && <3.0
     , optparse-applicative >=0.5.2 && <1.0
     , text >=1.2.2 && <2.0
     , these >=0.7.4 && <1.0
@@ -56,6 +57,7 @@ executable bae-periods
     , bytestring >=0.10.8 && <1.0
     , colour >=2.3.4 && <3.0
     , hours
+    , mtl >=2.2.1 && <3.0
     , optparse-applicative >=0.5.2 && <1.0
     , text >=1.2.2 && <2.0
     , these >=0.7.4 && <1.0
@@ -77,6 +79,7 @@ executable process-hours
     , diagrams-core
     , diagrams-lib
     , hours
+    , mtl >=2.2.1 && <3.0
     , optparse-applicative >=0.5.2 && <1.0
     , text >=1.2.2 && <2.0
     , these >=0.7.4 && <1.0
@@ -96,6 +99,7 @@ executable timelog-periods
     , bytestring >=0.10.8 && <1.0
     , colour >=2.3.4 && <3.0
     , hours
+    , mtl >=2.2.1 && <3.0
     , optparse-applicative >=0.5.2 && <1.0
     , text >=1.2.2 && <2.0
     , these >=0.7.4 && <1.0

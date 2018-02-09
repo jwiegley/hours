@@ -14,8 +14,6 @@ import           Timelog (parseLogbook)
 
 data Options = Options
     { now     :: UTCTime
-    , rbegin  :: UTCTime
-    , rend    :: UTCTime
     , timelog :: FilePath
     }
     deriving Show
@@ -23,11 +21,10 @@ data Options = Options
 options :: Parser Options
 options = Options
     <$> option parseT
-            (long "now"   <> help "Set the meaning of now"
-                          <> value (unsafePerformIO getCurrentTime))
-    <*> option parseT (long "begin" <> help "Start of time range to read")
-    <*> option parseT (long "end"   <> help "End of time range to read")
-    <*> strOption     (long "file"  <> help "File containing timelog data")
+            (long "now" <>
+             help "Set the meaning of now" <>
+             value (unsafePerformIO getCurrentTime))
+    <*> strOption (long "file" <> help "File containing timelog data")
   where
     parseT :: ReadM UTCTime
     parseT = eitherReader parseIso
@@ -45,5 +42,5 @@ main = do
     zone <- getCurrentTimeZone
     let (logged, ints) = parseLogbook zone (now opts) input
 
-    BL.putStrLn (encodeIntervals (now opts) logged
+    BL.putStrLn (encodeIntervals (now opts) (not (null logged))
                                  (mapValues (NotWorking,) ints))

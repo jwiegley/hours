@@ -127,7 +127,9 @@ calculateBudget start finish now base now' loggedIn ideal def real =
                                               / fromIntegral bIdealPeriodsLeft
     bRealRemaining        = bIdealTotal - bRealCompleted
     bRealThisCompleted    = Budget.sumValues today
-    bRealThisRemaining    = activeExpectation - bRealThisCompleted
+    bRealThisRemaining    | bIdealPeriodsLeftIncl > 1 =
+                            activeExpectation - bRealThisCompleted
+                          | otherwise = bRealRemaining
     bExpectation          = bRealRemaining - bIdealRemaining
     bCurrentPeriodSpan    = maybe 0 (\p -> Budget.delta (end p) (begin p)) current
     bCurrentPeriod        = maybe def Budget.value current
@@ -140,8 +142,7 @@ calculateBudget start finish now base now' loggedIn ideal def real =
     (_, today)            = Budget.divideIntervals base real
 
     activeExpectation
-        | bIdealPeriodsLeftIncl > 0 =
-              hours / fromIntegral bIdealPeriodsLeftIncl
-        | otherwise = hours
-      where
-        hours = bRealRemaining + bRealThisCompleted
+        | bIdealPeriodsLeftIncl > 1 =
+              (bRealRemaining + bRealThisCompleted)
+                  / fromIntegral bIdealPeriodsLeftIncl
+        | otherwise = bRealRemaining
