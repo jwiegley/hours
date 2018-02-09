@@ -99,13 +99,15 @@ indicator (bCurrentPeriod -> RegularDay) = "|"
 indicator _ = "∙"
 
 displayString :: Bool -> Budget t NominalDiffTime WorkDay -> String
-displayString loggedIn budget@Budget {..} = printf "%s%.1f %s %.1f"
+displayString loggedIn budget@Budget {..} = printf "%s%.1f %s %s%.1f"
     (if bRealThisRemaining < 0 then "+" else "")
     (abs (toHours bRealThisRemaining))
     (indicator budget)
-    (toHours (if loggedIn
-              then bRealExpected
-              else bRealExpectedInact))
+    (if expectation < 0 then "+" else "")
+    (abs (toHours expectation))
+  where
+    expectation | loggedIn  = bRealExpected
+                | otherwise = bRealExpectedInact
 
 hoursLispForm :: Bool -> Budget UTCTime NominalDiffTime WorkDay -> String
 hoursLispForm loggedIn b = concat
