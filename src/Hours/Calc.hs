@@ -13,12 +13,13 @@ import           Hours.Budget (Interval(..))
 import qualified Hours.Budget as Budget
 import           Hours.Variant
 
-dimColor :: (Num a, Ord a)
-         => Colour a -> Colour a -> Colour a -> a -> Colour a
+dimColor :: Colour Double -> Colour Double -> Colour Double -> Double -> Colour Double
 dimColor background ahead behind progress =
     withOpacity (if progress < 0
                  then behind
-                 else ahead) (abs progress) `over` background
+                 else ahead)
+                (max 1.5 (abs progress))
+        `over` background
 
 progressColor :: Double -> Colour Double
 progressColor = dimColor darkgrey red green
