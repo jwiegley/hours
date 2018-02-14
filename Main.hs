@@ -98,16 +98,21 @@ indicator (bCurrentPeriod -> HalfFriday) = "/"
 indicator (bCurrentPeriod -> RegularDay) = "|"
 indicator _ = "∙"
 
-displayString :: Bool -> Budget t NominalDiffTime WorkDay -> String
-displayString loggedIn budget@Budget {..} = printf "%s%.1f %s %s%.1f"
+displayString :: Budget t NominalDiffTime WorkDay -> String
+displayString budget@Budget {..} = printf "%s%.1f %s %s%.1f"
     (if bRealThisRemaining < 0 then "+" else "")
     (abs (toHours bRealThisRemaining))
     (indicator budget)
-    (if expectation < 0 then "+" else "")
-    (abs (toHours expectation))
-  where
-    expectation | loggedIn  = bRealExpected
-                | otherwise = bRealExpectedInact
+    (if bRealExpected < 0 then "+" else "")
+    (abs (toHours bRealExpected))
+
+totalString :: Budget t NominalDiffTime WorkDay -> String
+totalString budget@Budget {..} = printf "%s%.1f %s %s%.1f"
+    (if bRealRemaining < 0 then "+" else "")
+    (abs (toHours bRealRemaining))
+    (indicator budget)
+    (if bExpectation < 0 then "+" else "")
+    (abs (toHours bExpectation))
 
 hoursLispForm :: Bool -> Budget UTCTime NominalDiffTime WorkDay -> String
 hoursLispForm loggedIn b = concat
@@ -116,7 +121,8 @@ hoursLispForm loggedIn b = concat
              (variantToLisp (BoolVal loggedIn :: Variant ()))
     , printf "(ideal-progress         . %.4f)\n" (idealProgress b)
     , printf "(real-discrepancy       . %.4f)\n" (realDiscrepancy b)
-    , printf "(display-string         . \"%s\")\n" (displayString loggedIn b)
+    , printf "(display-string         . \"%s\")\n" (displayString b)
+    , printf "(total-string           . \"%s\")\n" (totalString b)
     , printf "(indicator              . \"%s\")\n" (indicator b)
     , printf "(text-color             . %s)\n"
              (variantToLisp
@@ -135,7 +141,9 @@ hoursDiagram :: Int
 hoursDiagram height width loggedIn b@Budget {..} =
     textDisplay <> (completionBar <> backgroundBar) # centerX
   where
-    textDisplay     = text (displayString loggedIn b)
+    textDisplay     = text (if loggedIn
+                            then displayString b
+                            else totalString b)
                     # font "DejaVu Sans Mono"
                     # fontSize (local (20 * (barWidth / barHeight)))
                     # fontWeight FontWeightBold

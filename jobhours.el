@@ -54,6 +54,7 @@ Note that the 'org2tc' utility must be on your PATH."
            (logged-in            (alist-get 'logged-in details))
            (ideal-progress       (alist-get 'ideal-progress details))
            (display-string       (alist-get 'display-string details))
+           (total-string         (alist-get 'total-string details))
            (text-color           (apply #'color-rgb-to-hex
                                         (alist-get 'text-color details)))
            (progress-color       (apply #'color-rgb-to-hex
@@ -66,7 +67,9 @@ Note that the 'org2tc' utility must be on your PATH."
 
       (delete-region (point-min) (point-max))
 
-      (insert "  " display-string "  ")
+      (insert "  " (if logged-in
+                       display-string
+                     total-string) "  ")
 
       ;; Color the whole "time bar" a neutral, light grey
       (add-face-text-property (point-min) (point-max)
