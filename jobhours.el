@@ -31,23 +31,16 @@
   "Companion code for the 'hours' Haskell utility"
   :group 'jobhours)
 
-(defcustom jobhours-file "todo.txt"
+(defcustom jobhours-files '("todo.txt")
   "The Org-file from which time clock data is read.
 Note that the 'org2tc' utility must be on your PATH."
-  :type 'file
-  :group 'jobhours)
-
-(defcustom jobhours-diagram-path nil
-  "If non-nil, the pathname of a PNG file to hold the jobhours diagram."
-  :type '(choice (const :tag "Do not generate" nil) file)
+  :type '(repeat file)
   :group 'jobhours)
 
 (defun jobhours-get-string ()
   (with-temp-buffer
     (apply #'call-process "jobhours" nil t nil
-           (cons (expand-file-name jobhours-file)
-                 (and jobhours-diagram-path
-                      (list "--diagram" jobhours-diagram-path))))
+           (mapcar #'expand-file-name jobhours-files))
 
     (goto-char (point-min))
     (let* ((details (read (current-buffer)))

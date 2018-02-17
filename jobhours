@@ -17,7 +17,8 @@ fi
 
 function parseorg() {
     ORG_START=$(convert_time "$1")
-    org2tc -s "$ORG_START" "$2" | timelog-periods --file -
+    shift 1
+    org2tc -s "$ORG_START" "$@" | timelog-periods --file -
 }
 
 function convert_time() {
@@ -38,8 +39,5 @@ bae-periods --there > "$periods"
 
 START=$(jq -r .start "$periods")
 FINISH=$(jq -r .finish "$periods")
-FILE=$1
-shift 1
 
-process-hours --ideal "$periods" \
-              --real <(parseorg "$START" "$FILE") "$@"
+process-hours --ideal "$periods" --real <(parseorg "$START" "$@")
