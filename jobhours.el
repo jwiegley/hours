@@ -37,7 +37,7 @@ Note that the 'org2tc' utility must be on your PATH."
   :type '(repeat file)
   :group 'jobhours)
 
-(defun jobhours-get-string ()
+(defun jobhours-get-string (&optional show-all)
   (with-temp-buffer
     (apply #'call-process "jobhours" nil t nil
            (mapcar #'expand-file-name jobhours-files))
@@ -60,9 +60,12 @@ Note that the 'org2tc' utility must be on your PATH."
 
       (delete-region (point-min) (point-max))
 
-      (insert "  " (if logged-in
-                       display-string
-                     total-string) "  ")
+      (insert "  "
+              (if show-all
+                  (concat display-string "  ─  " total-string)
+                (if logged-in
+                    display-string
+                  total-string)) "  ")
 
       ;; Color the whole "time bar" a neutral, light grey
       (add-face-text-property (point-min) (point-max)
