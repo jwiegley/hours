@@ -45,6 +45,9 @@ let inherit (nixpkgs) pkgs;
       diagrams-rasterific = doJailbreak super.diagrams-rasterific;
       diagrams-svg        = doJailbreak super.diagrams-svg;
       circle-packing      = doJailbreak super.circle-packing;
+      active              = doJailbreak super.active;
+      force-layout        = doJailbreak super.force-layout;
+      svg-builder         = doJailbreak super.svg-builder;
     };
   });
 

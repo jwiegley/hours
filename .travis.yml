@@ -14,6 +14,8 @@ env:
 
 matrix:
   allow_failures:
+    # It fails here because svg-builder hasn't been ported
+    - GHCVERSION=ghc842
   exclude:
 
 script:
