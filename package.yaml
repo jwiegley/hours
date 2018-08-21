@@ -38,11 +38,11 @@ executables:
       - diagrams-core
       - diagrams-lib
 
-  bae-periods:
-    source-dirs: bae
+  work-periods:
+    source-dirs: work
     main: Main.hs
     other-modules:
-      - BAE
+      - Work
     dependencies:
       - hours
 

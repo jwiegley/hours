@@ -48,7 +48,7 @@ in haskellPackages.developPackage {
       mkdir -p $out/bin
       cp jobhours $out/bin
       cp gethours $out/bin
-      cp dist/build/bae-periods/bae-periods $out/bin
+      cp dist/build/work-periods/work-periods $out/bin
       cp dist/build/timelog-periods/timelog-periods $out/bin
       cp dist/build/process-hours/process-hours $out/bin
     '';

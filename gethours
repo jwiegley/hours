@@ -1,13 +1,13 @@
 #!/bin/bash -e
 
-org2tc "$@" ~/Documents/tasks/BAE.txt ~/Documents/tasks/archive/BAE.txt \
-    | ledger -f - --day-break print > /tmp/BAE.dat
+org2tc "$@" ~/Documents/tasks/dfinity.txt ~/Documents/tasks/archive/dfinity.txt \
+    | ledger -f - --day-break print > /tmp/work.dat
 
 echo
 echo Daily totals
 echo ================================================================================
 
-ledger -f /tmp/BAE.dat                          \
+ledger -f /tmp/work.dat                          \
     --columns=80 --day-break --daily            \
     --base --total='(1.00 hrs*amount)/3600'     \
     --sort date --collapse reg
@@ -16,7 +16,7 @@ echo
 echo Daily breakdown
 echo ================================================================================
 
-ledger -f /tmp/BAE.dat                          \
+ledger -f /tmp/work.dat                          \
     --columns=80 --day-break --daily            \
     --base --total='(1.00 hrs*amount)/3600'     \
     --sort date reg
@@ -25,7 +25,7 @@ echo
 echo Weekly totals
 echo ================================================================================
 
-ledger -f /tmp/BAE.dat --weekly                 \
+ledger -f /tmp/work.dat --weekly                 \
     --columns=80 --day-break                    \
     --base --total='(1.00 hrs*total)/3600'      \
     --sort date bal
@@ -35,7 +35,7 @@ echo
 echo Allocations
 echo ================================================================================
 
-ledger -f /tmp/BAE.dat bal --base --percent --depth=1
+ledger -f /tmp/work.dat bal --base --percent --depth=1
 echo
 
-ledger -f /tmp/BAE.dat bal --base --percent --depth=2 55AJK
+ledger -f /tmp/work.dat bal --base --percent --depth=2 55AJK

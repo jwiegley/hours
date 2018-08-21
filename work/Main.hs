@@ -1,6 +1,6 @@
 module Main where
 
-import qualified BAE
+import qualified Work
 import qualified Data.ByteString.Lazy.Char8 as BL
 import           Data.Semigroup (Semigroup(..))
 import           Data.Time (UTCTime, getCurrentTime,
@@ -26,19 +26,19 @@ options = Options
 main :: IO ()
 main = do
     opts <- execParser $ info (helper <*> options)
-        (fullDesc <> progDesc "Report BAE work periods"
-                  <> header "bae-period")
+        (fullDesc <> progDesc "Report work periods"
+                  <> header "work-periods")
 
     zone <- getCurrentTimeZone
 
     let -- Since I don't work 6-2 PST, I adjust real expectations to compute
-        -- as if I were situated at the BAE office and working from there.
+        -- as if I were situated at the Work office and working from there.
         -- This better models an ordinary 9-5 workday.
         now' = addUTCTime (- secsAway) (now opts)
           where
-            secsAway = diffTimeZone BAE.timeZoneBAE zone
+            secsAway = diffTimeZone Work.timeZoneWork zone
 
         moment = if there opts then now' else now opts
-        ints   = BAE.workIntervals (there opts) moment
+        ints   = Work.workIntervals (there opts) moment
 
     BL.putStrLn (encodeIntervals moment False ints)

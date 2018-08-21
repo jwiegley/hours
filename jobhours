@@ -29,13 +29,13 @@ function convert_time() {
     date --date="$stamp -0000" +'%Y-%m-%d %H:%M:%S'
 }
 
-periods=$(mktemp -t bae-periods.XXXXXXXX)
+periods=$(mktemp -t work-periods.XXXXXXXX)
 function finish {
   rm -f "$periods"
 }
 trap finish EXIT
 
-bae-periods --there > "$periods"
+work-periods --there > "$periods"
 
 START=$(jq -r .start "$periods")
 FINISH=$(jq -r .finish "$periods")

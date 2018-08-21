@@ -12,10 +12,10 @@ tracking time.
 
 Three programs are built along with this library:
 
-  - `bae-periods`: Computes the current ideal work periods relative to the
-    current time, as expected by my employer, BAE Systems. I don't expect
-    anyone else to use this program, but you might copy and modify the to suit
-    your environment.
+  - `work-periods`: Computes the current ideal work periods relative to the
+    current time, as expected by my employer. I don't expect anyone else to
+    use this program, but you might copy and modify the to suit your
+    environment.
 
   - `utimelog-periods`: Converts a file in the Emacs timeclock format, which
     is just simply `i DATE TIME` for clock-in, and `o DATE TIME` for clock-out

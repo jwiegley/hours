@@ -32,8 +32,8 @@ options = Options
 main :: IO ()
 main = do
     opts  <- execParser $ info (helper <*> options)
-        (fullDesc <> progDesc "Report BAE work periods"
-                  <> header "bae-period")
+        (fullDesc <> progDesc "Report work periods"
+                  <> header "work-periods")
 
     input <- case timelog opts of
         "-"  -> getContents
