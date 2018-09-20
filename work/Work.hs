@@ -10,13 +10,14 @@ import Hours.Budget (Interval(..))
 import Hours.Input (WorkDay(..))
 import Hours.Time
 
+timeZoneWork :: TimeZone
+timeZoneWork = TimeZone (-480) False "PST"
+
 holidayTable :: [UTCTime]
 holidayTable =
     [ zonedTimeToUTC (mkZonedTime timeZoneWork 2018 1 1 9 0)
+    , zonedTimeToUTC (mkZonedTime timeZoneWork 2018 9 3 9 0)
     ]
-
-timeZoneWork :: TimeZone
-timeZoneWork = TimeZone (-480) False "PST"
 
 workHours :: Bool -> WorkDay -> NominalDiffTime
 workHours _ NotWorking = 0
