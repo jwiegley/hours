@@ -1,4 +1,4 @@
-{ compiler    ? "ghc822"
+{ compiler    ? "ghc843"
 , doBenchmark ? false
 , doTracing   ? false
 , doStrict    ? false
