@@ -52,6 +52,9 @@ in haskellPackages.developPackage {
       cp dist/build/timelog-periods/timelog-periods $out/bin
       cp dist/build/process-hours/process-hours $out/bin
     '';
+
+    # Required for org2tc
+    executableSystemDepends = [ pkgs.python ];
   });
 
   inherit returnShellEnv;
