@@ -12,17 +12,17 @@ ledger -f /tmp/work.dat                          \
     --base --total='(1.00 hrs*amount)/3600'     \
     --sort date --collapse reg
 
-echo
-echo Daily breakdown
-echo ================================================================================
+# echo
+# echo Daily breakdown
+# echo ================================================================================
 
-ledger -f /tmp/work.dat                          \
-    --columns=80 --day-break --daily            \
-    --base --total='(1.00 hrs*amount)/3600'     \
-    --sort date reg
+# ledger -f /tmp/work.dat                          \
+#     --columns=80 --day-break --daily            \
+#     --base --total='(1.00 hrs*amount)/3600'     \
+#     --sort date reg
 
 echo
-echo Weekly totals
+echo Totals
 echo ================================================================================
 
 ledger -f /tmp/work.dat --weekly                 \
