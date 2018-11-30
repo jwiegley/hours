@@ -27,7 +27,7 @@ textColor :: (Ord u, Num u) => Bool -> Budget t u a -> Colour Double
 textColor loggedIn b
     | loggedIn, bRealThisRemaining b < 0 = cyan
     | loggedIn = yellow
-    | otherwise = black
+    | otherwise = lightgray
 
 data Budget t u a = Budget
     { bStart                :: t
