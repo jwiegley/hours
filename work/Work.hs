@@ -15,8 +15,17 @@ timeZoneWork = TimeZone (-480) False "PST"
 
 holidayTable :: [UTCTime]
 holidayTable =
-    [ zonedTimeToUTC (mkZonedTime timeZoneWork 2018 1 1 9 0)
-    , zonedTimeToUTC (mkZonedTime timeZoneWork 2018 9 3 9 0)
+    [ zonedTimeToUTC (mkZonedTime timeZoneWork 2018  1  1 9 0)
+    , zonedTimeToUTC (mkZonedTime timeZoneWork 2018  9  3 9 0)
+
+      -- Christmas break
+    , zonedTimeToUTC (mkZonedTime timeZoneWork 2018 12 24 9 0)
+    , zonedTimeToUTC (mkZonedTime timeZoneWork 2018 12 25 9 0)
+    , zonedTimeToUTC (mkZonedTime timeZoneWork 2018 12 26 9 0)
+    , zonedTimeToUTC (mkZonedTime timeZoneWork 2018 12 27 9 0)
+    , zonedTimeToUTC (mkZonedTime timeZoneWork 2018 12 28 9 0)
+    , zonedTimeToUTC (mkZonedTime timeZoneWork 2018 12 31 9 0)
+    , zonedTimeToUTC (mkZonedTime timeZoneWork 2019  1  1 9 0)
     ]
 
 workHours :: Bool -> WorkDay -> NominalDiffTime
