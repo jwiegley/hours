@@ -26,6 +26,8 @@ holidayTable =
     , zonedTimeToUTC (mkZonedTime timeZoneWork 2018 12 28 9 0)
     , zonedTimeToUTC (mkZonedTime timeZoneWork 2018 12 31 9 0)
     , zonedTimeToUTC (mkZonedTime timeZoneWork 2019  1  1 9 0)
+
+    , zonedTimeToUTC (mkZonedTime timeZoneWork 2019  1 21 9 0)
     ]
 
 workHours :: Bool -> WorkDay -> NominalDiffTime

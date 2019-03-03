@@ -1,9 +1,9 @@
-{ compiler    ? "ghc843"
+{ compiler    ? "ghc844"
 , doBenchmark ? false
 , doTracing   ? false
 , doStrict    ? false
-, rev         ? "d1ae60cbad7a49874310de91cd17708b042400c8"
-, sha256      ? "0a1w4702jlycg2ab87m7n8frjjngf0cis40lyxm3vdwn7p4fxikz"
+, rev         ? "120eab94e0981758a1c928ff81229cd802053158"
+, sha256      ? "0qk6k8gxx5xlkyg05dljywj5wx5fvrc3dzp4v2h6ab83b7zwg813"
 , pkgs        ? import (builtins.fetchTarball {
     url = "https://github.com/NixOS/nixpkgs/archive/${rev}.tar.gz";
     inherit sha256; }) {
@@ -34,6 +34,12 @@ in haskellPackages.developPackage {
     active              = doJailbreak super.active;
     force-layout        = doJailbreak super.force-layout;
     svg-builder         = doJailbreak super.svg-builder;
+    these               = doJailbreak super.these;
+
+    aeson               = overrideCabal super.aeson (attrs: {
+      libraryHaskellDepends =
+        attrs.libraryHaskellDepends ++ [ super.contravariant ];
+    });
   };
 
   source-overrides = {
