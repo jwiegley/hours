@@ -1,6 +1,8 @@
 #!/bin/bash -e
 
-org2tc "$@" ~/Documents/tasks/dfinity.txt ~/Documents/tasks/archive/dfinity.txt \
+DIR="$HOME/Library/Mobile Documents/iCloud~com~appsonthemove~beorg/Documents/org"
+
+org2tc "$@" "$DIR/dfinity.org" "$DIR/archive/dfinity.org" \
     | ledger -f - --day-break print > /tmp/work.dat
 
 echo
