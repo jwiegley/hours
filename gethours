@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-DIR="$HOME/Library/Mobile Documents/iCloud~com~appsonthemove~beorg/Documents/org"
+DIR="$HOME/dfinity/docs"
 
 org2tc "$@" "$DIR/dfinity.org" "$DIR/archive/dfinity.org" \
     | ledger -f - --day-break print > /tmp/work.dat
