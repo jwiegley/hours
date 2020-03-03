@@ -1,9 +1,9 @@
-{ compiler    ? "ghc863"
+{ compiler    ? "ghc865"
 , doBenchmark ? false
 , doTracing   ? false
 , doStrict    ? false
-, rev         ? "a3b6b49eac91baa25a01ef10b74a7aeb89a963a1"
-, sha256      ? "1za2mvmc9nlxb91syd608fjrkm53rm658nflracy1js1a3nlaj06"
+, rev         ? "24c765c744ba856700db92ab94ef9c695d73f95f"
+, sha256      ? "0ak482k4jsnnmipmc038fla5ywr9h01xs91sjkx35wkkxcs2lc23"
 , pkgs        ? import (builtins.fetchTarball {
     url = "https://github.com/NixOS/nixpkgs/archive/${rev}.tar.gz";
     inherit sha256; }) {
@@ -20,7 +20,8 @@ in haskellPackages.developPackage {
   root = ./.;
 
   overrides = with pkgs.haskell.lib; self: super: {
-    time-recurrence     = doJailbreak super.time-recurrence;
+    time-compat         = doJailbreak super.time-compat;
+    time-recurrence     = markUnbroken (doJailbreak super.time-recurrence);
     diagrams-builder    = doJailbreak super.diagrams-builder;
     diagrams-cairo      = doJailbreak super.diagrams-cairo;
     diagrams-contrib    = doJailbreak super.diagrams-contrib;

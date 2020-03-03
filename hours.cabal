@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.31.1.
+-- This file has been generated from package.yaml by hpack version 0.33.0.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 03c91090c2de1c8b3d7fe766fc93ef634246ae0f1a6c0795ed633a0401a0cdd3
+-- hash: fd89ab9b3a957217ce897c652dca68de23a5bcd59d39bc5e1485d84c5ff7dac7
 
 name:           hours
 version:        3.0.0
@@ -41,7 +41,7 @@ library
     , mtl >=2.2.1 && <3.0
     , optparse-applicative >=0.5.2 && <1.0
     , text >=1.2.2 && <2.0
-    , these >=0.7.4 && <1.0
+    , these >=0.7.4 && <1.1
     , time >=1.4 && <2.0
     , time-recurrence >=0.9.1 && <1.0
   default-language: Haskell2010
@@ -63,7 +63,7 @@ executable process-hours
     , mtl >=2.2.1 && <3.0
     , optparse-applicative >=0.5.2 && <1.0
     , text >=1.2.2 && <2.0
-    , these >=0.7.4 && <1.0
+    , these >=0.7.4 && <1.1
     , time >=1.4 && <2.0
     , time-recurrence >=0.9.1 && <1.0
   default-language: Haskell2010
@@ -83,7 +83,7 @@ executable timelog-periods
     , mtl >=2.2.1 && <3.0
     , optparse-applicative >=0.5.2 && <1.0
     , text >=1.2.2 && <2.0
-    , these >=0.7.4 && <1.0
+    , these >=0.7.4 && <1.1
     , time >=1.4 && <2.0
     , time-recurrence >=0.9.1 && <1.0
   default-language: Haskell2010
@@ -103,7 +103,7 @@ executable work-periods
     , mtl >=2.2.1 && <3.0
     , optparse-applicative >=0.5.2 && <1.0
     , text >=1.2.2 && <2.0
-    , these >=0.7.4 && <1.0
+    , these >=0.7.4 && <1.1
     , time >=1.4 && <2.0
     , time-recurrence >=0.9.1 && <1.0
   default-language: Haskell2010
