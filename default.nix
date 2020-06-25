@@ -2,8 +2,8 @@
 , doBenchmark ? false
 , doTracing   ? false
 , doStrict    ? false
-, rev         ? "24c765c744ba856700db92ab94ef9c695d73f95f"
-, sha256      ? "0ak482k4jsnnmipmc038fla5ywr9h01xs91sjkx35wkkxcs2lc23"
+, rev         ? "2cd2e7267e5b9a960c2997756cb30e86f0958a6b"
+, sha256      ? "0ir3rk776wldyjz6l6y5c5fs8lqk95gsik6w45wxgk6zdpsvhrn5"
 , pkgs        ? import (builtins.fetchTarball {
     url = "https://github.com/NixOS/nixpkgs/archive/${rev}.tar.gz";
     inherit sha256; }) {
@@ -20,27 +20,11 @@ in haskellPackages.developPackage {
   root = ./.;
 
   overrides = with pkgs.haskell.lib; self: super: {
-    time-compat         = doJailbreak super.time-compat;
-    time-recurrence     = markUnbroken (doJailbreak super.time-recurrence);
-    diagrams-builder    = doJailbreak super.diagrams-builder;
-    diagrams-cairo      = doJailbreak super.diagrams-cairo;
-    diagrams-contrib    = doJailbreak super.diagrams-contrib;
-    diagrams-core       = doJailbreak super.diagrams-core;
-    diagrams-graphviz   = doJailbreak super.diagrams-graphviz;
-    diagrams-lib        = doJailbreak super.diagrams-lib;
-    diagrams-postscript = doJailbreak super.diagrams-postscript;
-    diagrams-rasterific = doJailbreak super.diagrams-rasterific;
-    diagrams-svg        = doJailbreak super.diagrams-svg;
-    circle-packing      = doJailbreak super.circle-packing;
-    active              = doJailbreak super.active;
-    force-layout        = doJailbreak super.force-layout;
-    svg-builder         = doJailbreak super.svg-builder;
-    these               = doJailbreak super.these;
-
-    aeson               = overrideCabal super.aeson (attrs: {
-      libraryHaskellDepends =
-        attrs.libraryHaskellDepends ++ [ super.contravariant ];
-    });
+    # hpack no longer builds with 8.6.5, but we only need the executable, not
+    # a library.
+    hpack           = pkgs.haskell.packages.ghc883.hpack;
+    rebase          = doJailbreak super.rebase;
+    time-recurrence = markUnbroken (doJailbreak super.time-recurrence);
   };
 
   source-overrides = {
