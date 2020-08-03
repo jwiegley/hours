@@ -26,7 +26,7 @@ function convert_time() {
     stamp=$(echo "$*" | cut -c-19)
     # Reinterpret it as shifted to our timezone (3 hours behind).
     # NOTE: this is specific to my own use of this script!
-    date --date="$stamp -0000" +'%Y-%m-%d %H:%M:%S'
+    date --date="$stamp +0300" +'%Y-%m-%d %H:%M:%S'
 }
 
 periods=$(mktemp -t work-periods.XXXXXXXX)
