@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TupleSections #-}
 
 module Main where
@@ -17,6 +18,9 @@ data Options = Options
     , timelog :: FilePath
     }
     deriving Show
+
+instance MonadFail (Either String) where
+  fail = Left
 
 options :: Parser Options
 options = Options

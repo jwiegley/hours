@@ -42,7 +42,7 @@ toHours x = realToFrac x / 3600.0 :: Double
 fromHours :: Int -> NominalDiffTime
 fromHours x = fromIntegral (x * 3600)
 
-parseIso :: Monad m => String -> m UTCTime
+parseIso :: MonadFail m => String -> m UTCTime
 parseIso = parseTimeM True defaultTimeLocale "%Y-%m-%d %H:%M:%S %z"
 
 formatIso :: UTCTime -> String

@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances #-}
+
 module Main where
 
 import qualified Work
@@ -15,6 +17,9 @@ data Options = Options
     , there :: Bool
     }
     deriving Show
+
+instance MonadFail (Either String) where
+  fail = Left
 
 options :: Parser Options
 options = Options
