@@ -45,7 +45,7 @@ options = Options
           help "Height of the graphical display"))
     <*> optional (option auto (
           long "width" <>
-          help "Height of the graphical display"))
+          help "Width of the graphical display"))
     <*> optional (strOption (
           long "diagram" <>
           help "Output graphic diagram as a .PNG file"))
