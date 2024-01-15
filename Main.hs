@@ -12,10 +12,12 @@ import           Data.Semigroup (Semigroup((<>)))
 import           Data.Time.Clock (UTCTime, NominalDiffTime,
                                   getCurrentTime)
 import           Data.Time.LocalTime (getCurrentTimeZone)
+{-
 import           Diagrams.Backend.Cairo
 import           Diagrams.Prelude hiding (Options, (<>), start,
                                           option, height, width)
 import           Diagrams.TwoD.Text
+-}
 import           Hours.Budget (mapValues)
 import           Hours.Calc
 import           Hours.Input (IntervalFile(..), WorkDay(..))
@@ -30,7 +32,7 @@ data Options = Options
     , real    :: FilePath
     , height  :: Maybe Int
     , width   :: Maybe Int
-    , diagram :: Maybe FilePath
+    -- , diagram :: Maybe FilePath
     }
 
 options :: Parser Options
@@ -46,9 +48,9 @@ options = Options
     <*> optional (option auto (
           long "width" <>
           help "Width of the graphical display"))
-    <*> optional (strOption (
-          long "diagram" <>
-          help "Output graphic diagram as a .PNG file"))
+    -- <*> optional (strOption (
+    --       long "diagram" <>
+    --       help "Output graphic diagram as a .PNG file"))
 
 main :: IO ()
 main = do
@@ -77,11 +79,11 @@ main = do
 
     putStrLn (hoursLispForm (loggedIn reals) stats)
 
-    forM_ (diagram opts) $ \path -> do
-        let w = fromMaybe 600 (width opts)
-        renderCairo path (mkWidth (fromIntegral w))
-            (hoursDiagram (fromMaybe 150 (height opts)) w
-                 (loggedIn reals) stats)
+    -- forM_ (diagram opts) $ \path -> do
+    --     let w = fromMaybe 600 (width opts)
+    --     renderCairo path (mkWidth (fromIntegral w))
+    --         (hoursDiagram (fromMaybe 150 (height opts)) w
+    --              (loggedIn reals) stats)
 
 idealProgress :: Budget t NominalDiffTime a -> Double
 idealProgress Budget {..} = toHours bIdealExpectedExact / toHours bIdealTotal
@@ -133,6 +135,7 @@ hoursLispForm loggedIn b = concat
                           (realDiscrepancy b)) :: Variant ()))
     , show b, ")" ]
 
+{-
 hoursDiagram :: Int
              -> Int
              -> Bool
@@ -160,3 +163,4 @@ hoursDiagram height width loggedIn b@Budget {..} =
     completionBar   = rect completionWidth barHeight
                     # fc (progressColor (realDiscrepancy b))
                     # alignL
+-}
