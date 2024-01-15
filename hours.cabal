@@ -34,16 +34,16 @@ library
   hs-source-dirs:
       src
   build-depends:
-      aeson >=1.2.3 && <2.1
+      aeson >=1.2.3
     , base ==4.*
-    , bytestring >=0.10.8 && <1.0
-    , colour >=2.3.4 && <3.0
-    , mtl >=2.2.1 && <3.0
-    , optparse-applicative >=0.5.2 && <1.0
-    , text >=1.2.2 && <2.0
-    , these >=0.7.4 && <2
-    , time >=1.4 && <2.0
-    , time-recurrence >=0.9.1 && <1.0
+    , bytestring >=0.10.8
+    , colour >=2.3.4
+    , mtl >=2.2.1
+    , optparse-applicative >=0.5.2
+    , text >=1.2.2
+    , these >=0.7.4
+    , time >=1.4
+    , time-recurrence >=0.9.1
   default-language: Haskell2010
 
 executable process-hours
@@ -51,21 +51,21 @@ executable process-hours
   other-modules:
       Paths_hours
   build-depends:
-      aeson >=1.2.3 && <2.1
+      aeson >=1.2.3
     , base ==4.*
-    , bytestring >=0.10.8 && <1.0
-    , colour >=2.3.4 && <3.0
+    , bytestring >=0.10.8
+    , colour >=2.3.4
     , diagrams
     , diagrams-cairo
     , diagrams-core
     , diagrams-lib
     , hours
-    , mtl >=2.2.1 && <3.0
-    , optparse-applicative >=0.5.2 && <1.0
-    , text >=1.2.2 && <2.0
-    , these >=0.7.4 && <2
-    , time >=1.4 && <2.0
-    , time-recurrence >=0.9.1 && <1.0
+    , mtl >=2.2.1
+    , optparse-applicative >=0.5.2
+    , text >=1.2.2
+    , these >=0.7.4
+    , time >=1.4
+    , time-recurrence >=0.9.1
   default-language: Haskell2010
 
 executable timelog-periods
@@ -75,17 +75,17 @@ executable timelog-periods
   hs-source-dirs:
       timelog
   build-depends:
-      aeson >=1.2.3 && <2.1
+      aeson >=1.2.3
     , base ==4.*
-    , bytestring >=0.10.8 && <1.0
-    , colour >=2.3.4 && <3.0
+    , bytestring >=0.10.8
+    , colour >=2.3.4
     , hours
-    , mtl >=2.2.1 && <3.0
-    , optparse-applicative >=0.5.2 && <1.0
-    , text >=1.2.2 && <2.0
-    , these >=0.7.4 && <2
-    , time >=1.4 && <2.0
-    , time-recurrence >=0.9.1 && <1.0
+    , mtl >=2.2.1
+    , optparse-applicative >=0.5.2
+    , text >=1.2.2
+    , these >=0.7.4
+    , time >=1.4
+    , time-recurrence >=0.9.1
   default-language: Haskell2010
 
 executable work-periods
@@ -95,15 +95,15 @@ executable work-periods
   hs-source-dirs:
       work
   build-depends:
-      aeson >=1.2.3 && <2.1
+      aeson >=1.2.3
     , base ==4.*
-    , bytestring >=0.10.8 && <1.0
-    , colour >=2.3.4 && <3.0
+    , bytestring >=0.10.8
+    , colour >=2.3.4
     , hours
-    , mtl >=2.2.1 && <3.0
-    , optparse-applicative >=0.5.2 && <1.0
-    , text >=1.2.2 && <2.0
-    , these >=0.7.4 && <2
-    , time >=1.4 && <2.0
-    , time-recurrence >=0.9.1 && <1.0
+    , mtl >=2.2.1
+    , optparse-applicative >=0.5.2
+    , text >=1.2.2
+    , these >=0.7.4
+    , time >=1.4
+    , time-recurrence >=0.9.1
   default-language: Haskell2010
