@@ -1,4 +1,9 @@
 packages: hours.cabal
 
-allow-newer: time-recurrence:*
+source-repository-package
+    type: git
+    location: https://github.com/jwiegley/time-recurrence.git
+    tag: d1771331ffd495035cb7f1b2dd14cdf86b11d2fa
+    --sha256: 1l9vf5mzq2r22gph45jk1a4cl8i53ayinlwq1m8dbx3lpnzsjc09
 
+allow-newer: time-recurrence:*

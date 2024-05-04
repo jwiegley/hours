@@ -3,6 +3,7 @@
 
 module Timelog where
 
+import Control.Monad (foldM)
 import Control.Monad.State
 import Data.Char (toLower)
 import Data.List (sortOn)

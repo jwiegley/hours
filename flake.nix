@@ -21,7 +21,8 @@
           hours =
             final.haskell-nix.project' {
               src = ./.;
-              compiler-nix-name = "ghc963";
+              supportHpack = true;
+              compiler-nix-name = "ghc982";
               shell.tools = {
                 cabal = {};
                 haskell-language-server = {};
@@ -34,7 +35,7 @@
         })
       ];
     in {
-      packages.default = flake.packages."hours:exe:hours";
+      packages.default = flake.packages."hours:exe:process-hours";
       devShell = flake.devShell // {
         withHoogle = true;
       };
