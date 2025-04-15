@@ -534,6 +534,22 @@
         "type": "github"
       }
     },
+    "org2tc": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1744735557,
+        "narHash": "sha256-oNiZGnop4NDcGR7Lu1r/r/MeEd50L7/OOhCwin8R9SU=",
+        "ref": "refs/heads/master",
+        "rev": "f2858d14b5ebb321442087360759972e965d92be",
+        "revCount": 31,
+        "type": "git",
+        "url": "file:org2tc"
+      },
+      "original": {
+        "type": "git",
+        "url": "file:org2tc"
+      }
+    },
     "root": {
       "inputs": {
         "flake-utils": "flake-utils",
@@ -541,7 +557,8 @@
         "nixpkgs": [
           "haskellNix",
           "nixpkgs-unstable"
-        ]
+        ],
+        "org2tc": "org2tc"
       }
     },
     "stackage": {
