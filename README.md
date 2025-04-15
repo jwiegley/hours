@@ -17,7 +17,7 @@ Three programs are built along with this library:
     use this program, but you might copy and modify the to suit your
     environment.
 
-  - `utimelog-periods`: Converts a file in the Emacs timeclock format, which
+  - `timelog-periods`: Converts a file in the Emacs timeclock format, which
     is just simply `i DATE TIME` for clock-in, and `o DATE TIME` for clock-out
     (and which can also be understood by Ledger) into a set of real intervals.
 
@@ -54,5 +54,5 @@ This way, within a moment's glance, I know the following details:
   1. How much I should work today before kicking off.
   2. Whether I'm on track towards the end of the period.
   3. If I'm starting create long nights for myself in the near future.
-  4. How close I am to overall completion (the background of the begins to
+  4. How close I am to overall completion (the background begins to
      fill as work intervals are finish, until it's fully colored).
