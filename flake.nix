@@ -35,7 +35,16 @@
         })
       ];
     in {
-      packages.default = flake.packages."hours:exe:process-hours";
+      packages = {
+        all = pkgs.symlinkJoin {
+          name = "all";
+          paths = builtins.attrValues flake.packages;
+        };
+        default = flake.packages."hours:exe:process-hours";
+        work-periods = flake.packages."hours:exe:work-periods";
+        timelog-periods = flake.packages."hours:exe:timelog-periods";
+      };
+
       devShell = flake.devShell // {
         withHoogle = true;
       };
