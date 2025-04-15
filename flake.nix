@@ -21,6 +21,7 @@
       flake = pkgs.hours.flake {
       };
       org2tc-pkg = pkgs.callPackage org2tc {};
+      jobhours = pkgs.writeScriptBin "jobhours" (builtins.readFile ./jobhours);
       overlays = [ haskellNix.overlay
         (final: prev: {
           hours =
@@ -45,12 +46,14 @@
           name = "all";
           paths = builtins.attrValues flake.packages ++ [
             org2tc-pkg
+            jobhours
           ];
         };
         default = flake.packages."hours:exe:process-hours";
         work-periods = flake.packages."hours:exe:work-periods";
         timelog-periods = flake.packages."hours:exe:timelog-periods";
         org2tc = org2tc-pkg;
+        jobhours = jobhours;
       };
 
       devShell = flake.devShell // {

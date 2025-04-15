@@ -1,4 +1,5 @@
-#!/bin/bash -e
+#!/usr/bin/env bash
+set -e
 
 if [[ ! -f "$1" ]]; then
     echo "Usage: jobhours <Org-mode file containing CLOCK data>"
