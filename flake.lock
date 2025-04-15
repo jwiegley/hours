@@ -537,11 +537,11 @@
     "org2tc": {
       "flake": false,
       "locked": {
-        "lastModified": 1744737494,
-        "narHash": "sha256-g/ybSGf5BL0LhXRipI99+kC4TROF8iKaQiJoqDrOuWY=",
+        "lastModified": 1744741677,
+        "narHash": "sha256-wRVudADnm+dJF1rIJTdJm7hxSY81XuOhGKOREfymBPA=",
         "ref": "refs/heads/master",
-        "rev": "f022c055c3075a23fc07112d0a15ae630b6707c0",
-        "revCount": 32,
+        "rev": "d5cbda0614040bc6ef641f928dffe628fefe3127",
+        "revCount": 33,
         "type": "git",
         "url": "file:org2tc"
       },
