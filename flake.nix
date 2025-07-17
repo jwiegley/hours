@@ -34,9 +34,9 @@
             };
         })
       ];
-    in {
+    in flake // {
       packages.default = flake.packages."hours:exe:process-hours";
-      devShell = flake.devShell // {
+      devShells.default = flake.devShells.default // {
         withHoogle = true;
       };
     });
