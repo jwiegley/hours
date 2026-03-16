@@ -1,5 +1,5 @@
 {
-  description = "Time tracking software";
+  description = "Time tracking and budget analysis tool";
 
   inputs = {
     nixpkgs.follows = "haskellNix/nixpkgs-unstable";
@@ -30,6 +30,10 @@
                   };
                   buildInputs = with pkgs; [
                     pkg-config
+                    haskellPackages.fourmolu
+                    haskellPackages.hlint
+                    lefthook
+                    shellcheck
                   ];
                   withHoogle = true;
                 };
@@ -38,8 +42,36 @@
         ];
       in flake // {
         packages.default = flake.packages."hours:exe:process-hours";
-        devShells.default = flake.devShells.default // {
-          withHoogle = true;
+        devShells.default = flake.devShells.default;
+
+        checks = flake.checks // {
+          formatting = pkgs.runCommand "check-formatting" {
+            nativeBuildInputs = [ pkgs.haskellPackages.fourmolu ];
+          } ''
+            cd ${self}
+            find . -name '*.hs' \
+              -not -path './dist-*' \
+              -not -path './.git/*' \
+              -not -path './org2tc/*' \
+              | xargs fourmolu --mode check
+            touch $out
+          '';
+
+          linting = pkgs.runCommand "check-linting" {
+            nativeBuildInputs = [ pkgs.haskellPackages.hlint ];
+          } ''
+            cd ${self}
+            hlint src/ work/ timelog/ Main.hs test/
+            touch $out
+          '';
+
+          shellcheck-scripts = pkgs.runCommand "check-shellcheck" {
+            nativeBuildInputs = [ pkgs.shellcheck ];
+          } ''
+            cd ${self}
+            shellcheck jobhours gethours scripts/*.sh
+            touch $out
+          '';
         };
       });
 }

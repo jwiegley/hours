@@ -1,0 +1,7 @@
+- ignore: {name: "Redundant bracket"}
+- ignore: {name: "Use newtype deriving"}
+- ignore: {name: "Reduce duplication"}
+- ignore: {name: "Avoid restricted extensions"}
+- ignore: {name: "Unused LANGUAGE pragma"}
+- ignore: {name: "Use min"}
+- ignore: {name: "Use max"}

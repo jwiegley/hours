@@ -38,6 +38,7 @@ trap finish EXIT
 work-periods --there > "$periods"
 
 START=$(jq -r .start "$periods")
+# shellcheck disable=SC2034
 FINISH=$(jq -r .finish "$periods")
 
 process-hours --ideal "$periods" --real <(parseorg "$START" "$@")

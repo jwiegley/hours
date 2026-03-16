@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  nix-flake-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: cachix/install-nix-action@v27
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+
+      - name: Nix flake check
+        run: nix flake check --print-build-logs
+
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: cachix/install-nix-action@v27
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+
+      - name: Build all executables
+        run: nix build --print-build-logs
+
+      - name: Run formatting check
+        run: nix build .#checks.x86_64-linux.formatting --print-build-logs
+
+      - name: Run linting check
+        run: nix build .#checks.x86_64-linux.linting --print-build-logs
+
+      - name: Run shellcheck
+        run: nix build .#checks.x86_64-linux.shellcheck-scripts --print-build-logs

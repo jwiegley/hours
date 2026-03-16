@@ -1,0 +1,31 @@
+pre-commit:
+  parallel: true
+  commands:
+    fourmolu-check:
+      glob: "*.hs"
+      run: >
+        if command -v fourmolu >/dev/null 2>&1; then
+          fourmolu --mode check
+          $(find . -name '*.hs' -not -path './dist-*' -not -path './.git/*' -not -path './org2tc/*');
+        else echo "fourmolu not found, skipping (run inside nix develop)"; fi
+    hlint:
+      glob: "*.hs"
+      run: >
+        if command -v hlint >/dev/null 2>&1; then
+          hlint src/ work/ timelog/ Main.hs test/;
+        else echo "hlint not found, skipping (run inside nix develop)"; fi
+    shellcheck:
+      glob: "*.{sh,bash}"
+      run: >
+        if command -v shellcheck >/dev/null 2>&1; then
+          shellcheck jobhours gethours scripts/*.sh;
+        else echo "shellcheck not found, skipping (run inside nix develop)"; fi
+    nix-build:
+      glob: "*.{hs,nix,yaml,cabal}"
+      run: nix build --no-link --print-build-logs 2>&1
+    cabal-pipeline:
+      glob: "*.{hs,yaml,cabal}"
+      run: >
+        cabal test -j --test-show-details=direct &&
+        ./scripts/check-coverage.sh &&
+        ./scripts/check-perf.sh
