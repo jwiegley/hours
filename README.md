@@ -1,58 +1,118 @@
 # hours
 
-This program offers a budgeting algorithm, along with a use case for budgeting
-time.
+I've been tracking my work hours for years, and this is the tool I built to do
+it. At its core, it's a budgeting algorithm -- it takes two sets of intervals
+(what you're supposed to do vs. what you've actually done) and tells you where
+you stand.
 
-The budget algorithm, currently located in `Hours.Budget` and `Hours.Calc`, is
-time agnostic, and simply takes two lists of intervals -- a set of ideal
-periods, and a set of real periods -- and computes various statistics about
-where you are now, where you should be, and if you're on track. This code
-could be used for budgeting any resource, really, but I use it right now for
-tracking time.
+The nice thing about the design is that the core algorithm in `Hours.Budget`
+and `Hours.Calc` doesn't actually care about time. It just compares two lists
+of intervals and computes statistics about progress. I happen to use it for
+tracking work hours, but you could budget money, gas, water, or anything else
+you can break into intervals.
 
-Three programs are built along with this library:
+## What it looks like
 
-  - `work-periods`: Computes the current ideal work periods relative to the
-    current time, as expected by my employer. I don't expect anyone else to
-    use this program, but you might copy and modify the to suit your
-    environment.
-
-  - `utimelog-periods`: Converts a file in the Emacs timeclock format, which
-    is just simply `i DATE TIME` for clock-in, and `o DATE TIME` for clock-out
-    (and which can also be understood by Ledger) into a set of real intervals.
-
-    I use the program [org2tc](https://github.com/jwiegley/org2tc) to convert
-    my Org-mode file with clocking information into a timeclock log, in order
-    to feed into this `timelog-periods` program.
-
-  - `process-hours`: Given an ideal set of intervals, and a real set of
-    intervals -- and specifically intervals whose ranges are marked by time,
-    and whose associated values are "time expected/actually worked during that
-    period" -- this program computes the statistics and reports them in an
-    Emacs Lisp format, so they can be read and reported using the included
-    `jobhours.el` file.
-
-    Note that if you want to build a budgeting program around monetary values,
-    or gallons of gas, or water rationing, etc., this program would need to
-    change, as well as the programs you use to generate the ideal and real
-    data (assuming you don't create it by hand, since it's just JSON).
-
-The final result of all this is a very brief indicator in my Emacs window that
-looks something like this:
+The end result is a tiny indicator in my Emacs modeline:
 
     6.2h | 8.4
 
-This means that I have 6.2 hours left to work today to "stay on track", and
-that my current progress will require me to work 8.4 hours every interval
-(usually a work day) for the remaining intervals of this work period. The
-upright bar means I'm currently in a "work day", and the color of the display
-indicates whether I'm falling behind (starts becoming red), or getting ahead
-(starts becoming green).
+That tells me I've got 6.2 hours left to work today to stay on track, and that
+at my current pace I'll need 8.4 hours per remaining work day. The `|` means
+it's a regular work day (you'll see `?` for holidays, `!` for off-Fridays, and
+so on), and the color shifts from green to red depending on whether I'm ahead
+or behind.
 
-This way, within a moment's glance, I know the following details:
+One quick glance tells me:
 
-  1. How much I should work today before kicking off.
-  2. Whether I'm on track towards the end of the period.
-  3. If I'm starting create long nights for myself in the near future.
-  4. How close I am to overall completion (the background of the begins to
-     fill as work intervals are finish, until it's fully colored).
+  1. How much I should work today before calling it quits.
+  2. Whether I'm on track for the whole period.
+  3. If I'm digging myself into long nights down the road.
+
+## The three programs
+
+- **process-hours**: The main tool. It takes ideal and real intervals as JSON,
+  runs them through the budget algorithm, and spits out Emacs Lisp for the
+  modeline display.
+
+- **work-periods**: Generates the ideal work intervals based on a schedule.
+  This one's pretty specific to my setup, but you'd copy and modify it for
+  your own work calendar.
+
+- **timelog-periods**: Converts Emacs timeclock format (`i DATE TIME` /
+  `o DATE TIME`) into interval JSON. I use
+  [org2tc](https://github.com/jwiegley/org2tc) to get timeclock data out of
+  Org-mode CLOCK entries.
+
+## Data flow
+
+```
+Org-mode → org2tc → timeclock → timelog-periods → real.json
+                                                       ↓
+work-periods → ideal.json → process-hours → Lisp → Emacs modeline
+```
+
+## Building
+
+The project uses Nix for reproducible builds:
+
+```bash
+nix develop          # enter the development shell
+cabal build all      # build everything
+cabal test           # run the test suite
+```
+
+You can also build directly with Nix:
+
+```bash
+nix build                # build the default executable
+nix flake check          # run all checks: build, tests, formatting, linting
+```
+
+### Pre-commit hooks
+
+The project uses [Lefthook](https://github.com/evilmartians/lefthook) for
+pre-commit checks. After entering the dev shell:
+
+```bash
+lefthook install
+```
+
+This sets up automatic formatting, linting, and test checks on every commit.
+
+### Formatting
+
+All Haskell code is formatted with
+[fourmolu](https://github.com/fourmolu/fourmolu). To format everything:
+
+```bash
+./scripts/format.sh
+```
+
+## Quick start
+
+```bash
+# Generate the ideal schedule
+work-periods --there > ideal.json
+
+# Convert Org-mode clocking data
+org2tc -s "2024-01-01" todo.org | timelog-periods --file - > real.json
+
+# See where you stand
+process-hours --ideal ideal.json --real real.json
+```
+
+Or just use the `jobhours` wrapper that does it all in one step:
+
+```bash
+jobhours todo.org
+```
+
+## Emacs integration
+
+The included `jobhours.el` handles calling `jobhours` periodically and
+displaying the result in your modeline. See the file for setup details.
+
+## License
+
+BSD 3-Clause. See [LICENSE.md](LICENSE.md).
