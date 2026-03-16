@@ -1,11 +1,10 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
-
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Hours.Time where
 
 import Data.Time
-import Hours.Budget (HasDelta(..), Scalable(..))
+import Hours.Budget (HasDelta (..), Scalable (..))
 
 instance HasDelta UTCTime NominalDiffTime where
     delta = diffUTCTime
@@ -29,8 +28,13 @@ localDayStart zone now = zonedTimeToUTC (setHour 0 znow)
     znow = utcToZonedTime zone now
 
     setHour h t =
-        mkZonedTime (zonedTimeZone t) (fromIntegral yr)
-                    (fromIntegral mon) (fromIntegral day) h 0
+        mkZonedTime
+            (zonedTimeZone t)
+            (fromIntegral yr)
+            (fromIntegral mon)
+            (fromIntegral day)
+            h
+            0
 
     (yr, mon, day) = toGregorian (dayOf znow)
 
@@ -42,7 +46,7 @@ toHours x = realToFrac x / 3600.0 :: Double
 fromHours :: Int -> NominalDiffTime
 fromHours x = fromIntegral (x * 3600)
 
-parseIso :: MonadFail m => String -> m UTCTime
+parseIso :: (MonadFail m) => String -> m UTCTime
 parseIso = parseTimeM True defaultTimeLocale "%Y-%m-%d %H:%M:%S %z"
 
 formatIso :: UTCTime -> String
