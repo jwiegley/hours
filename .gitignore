@@ -1,3 +1,11 @@
 /dist/
+/dist-newstyle/
 /Setup
 /shell.nix
+/result
+.coverage-baseline
+.perf-baseline
+*.tix
+*.hp
+*.prof
+*.eventlog
