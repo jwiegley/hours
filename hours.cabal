@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.35.2.
+-- This file has been generated from package.yaml by hpack version 0.38.3.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 6f87ef96067f5bffc74fae47536e51a7b2870355d6d84fad03c50893775c949d
+-- hash: 8abd93dd90d11861089757d0318fd451a374dc5bd40d307549a8350da55e01c2
 
 name:           hours
 version:        3.0.0
@@ -33,6 +33,7 @@ library
       Paths_hours
   hs-source-dirs:
       src
+  ghc-options: -Wall
   build-depends:
       aeson >=1.2.3
     , base >=4
@@ -50,6 +51,7 @@ executable process-hours
   main-is: Main.hs
   other-modules:
       Paths_hours
+  ghc-options: -Wall
   build-depends:
       aeson >=1.2.3
     , base >=4
@@ -70,6 +72,7 @@ executable timelog-periods
       Timelog
   hs-source-dirs:
       timelog
+  ghc-options: -Wall
   build-depends:
       aeson >=1.2.3
     , base >=4
@@ -90,6 +93,7 @@ executable work-periods
       Work
   hs-source-dirs:
       work
+  ghc-options: -Wall
   build-depends:
       aeson >=1.2.3
     , base >=4
@@ -98,6 +102,34 @@ executable work-periods
     , hours
     , mtl >=2.2.1
     , optparse-applicative >=0.5.2
+    , text >=1.2.2
+    , these >=0.7.4
+    , time >=1.4
+    , time-recurrence >=0.9.1
+  default-language: Haskell2010
+
+test-suite hours-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Hours.BudgetTest
+      Hours.TimeTest
+      Hours.InputTest
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      aeson >=1.2.3
+    , base >=4
+    , bytestring >=0.10.8
+    , colour >=2.3.4
+    , hedgehog
+    , hours
+    , mtl >=2.2.1
+    , optparse-applicative >=0.5.2
+    , tasty
+    , tasty-hedgehog
+    , tasty-hunit
     , text >=1.2.2
     , these >=0.7.4
     , time >=1.4
