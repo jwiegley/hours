@@ -1,0 +1,193 @@
+.gitmodules
+  7db5710d41cfaf6b 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.9",
+  "base_commit_sha": "d63f2db557943d09d54da2cc57af45894eff40ca",
+  "prompts": {
+    "7db5710d41cfaf6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9d6ab978-83b8-4b75-bf53-13ecd9286af4",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "John Wiegley <johnw@newartisans.com>",
+      "messages": [
+        {
+          "type": "user",
+          "text": "<command-message>fix-ci</command-message>\n<command-name>/fix-ci</command-name>\n<command-args>on the main branch</command-args>",
+          "timestamp": "2026-03-17T05:32:57.295Z"
+        },
+        {
+          "type": "user",
+          "text": "CI tests are failing for this PR. Use cpp-pro to diagnose and resolve this issue, then push your fixes to the PR and monitor the CI test results using `gh` until you observe that everything passes correctly. If any further problems should be observed, repeat this diagnose, resolve, push and monitor process until everything is working with this PR.\n\n\nARGUMENTS: on the main branch",
+          "timestamp": "2026-03-17T05:32:57.295Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Let me start by checking the CI status and understanding what's failing.",
+          "timestamp": "2026-03-17T05:33:02.757Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "gh run list --limit 5",
+            "description": "List recent CI runs"
+          },
+          "timestamp": "2026-03-17T05:33:03.711Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "git log --oneline -5",
+            "description": "Show recent commits"
+          },
+          "timestamp": "2026-03-17T05:33:04.113Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "gh run view 23164813728 --log-failed 2>&1 | head -200",
+            "description": "View failed CI run logs"
+          },
+          "timestamp": "2026-03-17T05:33:13.641Z"
+        },
+        {
+          "type": "assistant",
+          "text": "The failure is clear: the `org2tc` submodule uses `git://` protocol which is blocked on GitHub Actions (port 9418 timeout). Let me check the submodule config and CI workflow.",
+          "timestamp": "2026-03-17T05:33:32.744Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "cat .gitmodules",
+            "description": "Check submodule configuration"
+          },
+          "timestamp": "2026-03-17T05:33:33.741Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Glob",
+          "input": {
+            "pattern": ".github/workflows/*.yml"
+          },
+          "timestamp": "2026-03-17T05:33:33.749Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/johnw/src/hours/.github/workflows/ci.yml"
+          },
+          "timestamp": "2026-03-17T05:33:38.247Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Two issues:\n1. The `org2tc` submodule uses `git://` protocol which is blocked on GitHub Actions (and deprecated by GitHub)\n2. Both jobs use `submodules: recursive` but may not actually need the submodule\n\nLet me check if the build actually depends on org2tc.",
+          "timestamp": "2026-03-17T05:33:47.451Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "ls org2tc/ 2>/dev/null | head -5; echo \"---\"; grep -r \"org2tc\" flake.nix cabal.project hours.cabal package.yaml 2>/dev/null",
+            "description": "Check if org2tc submodule is used in the build"
+          },
+          "timestamp": "2026-03-17T05:33:48.564Z"
+        },
+        {
+          "type": "assistant",
+          "text": "The submodule isn't needed for the build — `flake.nix` explicitly excludes it. The simplest fix is to either:\n1. Change the submodule URL to `https://` protocol\n2. Remove `submodules: recursive` from the CI workflow since it's not needed\n\nThe best approach is both: fix the submodule URL (good practice) and also remove the unnecessary submodule checkout from CI. Let me fix the submodule URL to `https://` and remove the `submodules: recursive` from CI.",
+          "timestamp": "2026-03-17T05:33:57.506Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Edit",
+          "input": {
+            "file_path": "/Users/johnw/src/hours/.gitmodules",
+            "new_string": "\turl = https://github.com/jwiegley/org2tc.git",
+            "old_string": "\turl = git://github.com/jwiegley/org2tc.git",
+            "replace_all": false
+          },
+          "timestamp": "2026-03-17T05:33:58.443Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Edit",
+          "input": {
+            "file_path": "/Users/johnw/src/hours/.github/workflows/ci.yml",
+            "new_string": "      - uses: actions/checkout@v4\n\n      - uses: cachix/install-nix-action@v27\n        with:\n          extra_nix_config: |\n            experimental-features = nix-command flakes\n            accept-flake-config = true\n\n      - name: Nix flake check\n        run: nix flake check --print-build-logs\n\n  build-and-test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4",
+            "old_string": "      - uses: actions/checkout@v4\n        with:\n          submodules: recursive\n\n      - uses: cachix/install-nix-action@v27\n        with:\n          extra_nix_config: |\n            experimental-features = nix-command flakes\n            accept-flake-config = true\n\n      - name: Nix flake check\n        run: nix flake check --print-build-logs\n\n  build-and-test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n        with:\n          submodules: recursive",
+            "replace_all": false
+          },
+          "timestamp": "2026-03-17T05:34:01.639Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/johnw/src/hours/.gitmodules"
+          },
+          "timestamp": "2026-03-17T05:34:09.855Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Edit",
+          "input": {
+            "file_path": "/Users/johnw/src/hours/.gitmodules",
+            "new_string": "\turl = https://github.com/jwiegley/org2tc.git",
+            "old_string": "\turl = git://github.com/jwiegley/org2tc.git",
+            "replace_all": false
+          },
+          "timestamp": "2026-03-17T05:34:22.313Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Now let me also sync the submodule config and commit the fixes.",
+          "timestamp": "2026-03-17T05:34:30.400Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "git submodule sync",
+            "description": "Sync submodule URL after .gitmodules change"
+          },
+          "timestamp": "2026-03-17T05:34:31.013Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "git diff",
+            "description": "Review all changes before committing"
+          },
+          "timestamp": "2026-03-17T05:34:41.163Z"
+        },
+        {
+          "type": "assistant",
+          "text": "Good. Two clean changes:\n1. `.gitmodules`: `git://` → `https://` (the `git://` protocol is deprecated and blocked on GitHub Actions)\n2. `ci.yml`: Remove `submodules: recursive` since the build explicitly excludes `org2tc/`\n\nLet me commit and push.",
+          "timestamp": "2026-03-17T05:34:49.301Z"
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "git add .gitmodules .github/workflows/ci.yml && git commit -m \"$(cat <<'EOF'\nFix CI failure: switch submodule to HTTPS and drop recursive checkout\n\nThe git:// protocol is deprecated and blocked on GitHub Actions runners,\ncausing the org2tc submodule clone to timeout. Switch to https:// and\nremove the unnecessary submodules: recursive checkout since the build\n(flake.nix) explicitly excludes org2tc/.\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n)\"",
+            "description": "Commit the CI fix"
+          },
+          "timestamp": "2026-03-17T05:34:52.644Z"
+        }
+      ],
+      "total_additions": 2,
+      "total_deletions": 10,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  }
+}
