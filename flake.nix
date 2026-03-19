@@ -52,7 +52,6 @@
             find . -name '*.hs' \
               -not -path './dist-*' \
               -not -path './.git/*' \
-              -not -path './org2tc/*' \
               | xargs fourmolu --mode check
             touch $out
           '';
